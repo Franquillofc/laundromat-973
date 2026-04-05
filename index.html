@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laundromat 973 — Operations Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #F5F2EC;
+  --surface: #FFFFFF;
+  --surface2: #EDE9E1;
+  --border: rgba(0,0,0,0.08);
+  --text: #1A1814;
+  --text2: #6B6760;
+  --text3: #9E9B96;
+  --accent: #1B4332;
+  --accent2: #2D6A4F;
+  --accent-light: #E8F5E9;
+  --amber: #92400E;
+  --amber-light: #FEF3C7;
+  --red: #991B1B;
+  --red-light: #FEE2E2;
+  --blue: #1E3A5F;
+  --blue-light: #DBEAFE;
+  --gold: #B45309;
+  --gold-light: #FDE68A;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+h1,h2,h3 { font-family: 'DM Serif Display', serif; font-weight: 400; }
+
+/* NAV */
+.nav { background: var(--accent); color: white; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+.nav-brand { font-family: 'DM Serif Display', serif; font-size: 20px; letter-spacing: 0.02em; }
+.nav-brand span { font-style: italic; opacity: 0.7; }
+.nav-right { display: flex; align-items: center; gap: 12px; }
+.lang-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; font-family: 'DM Sans', sans-serif; transition: background 0.2s; }
+.lang-btn:hover { background: rgba(255,255,255,0.25); }
+.lang-btn.active { background: rgba(255,255,255,0.3); font-weight: 600; }
+.nav-date { font-size: 12px; opacity: 0.65; }
+
+/* TABS */
+.tab-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 0; overflow-x: auto; }
+.tab { padding: 14px 20px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text2); border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; user-select: none; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-icon { margin-right: 6px; }
+
+/* VIEWS */
+.view { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
+.view.active { display: block; }
+
+/* CARDS */
+.card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; box-shadow: var(--shadow); }
+.card-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+.section-gap { margin-bottom: 20px; }
+
+/* KPI CARDS */
+.kpi { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 18px 20px; box-shadow: var(--shadow); }
+.kpi-label { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+.kpi-value { font-family: 'DM Serif Display', serif; font-size: 28px; line-height: 1.1; }
+.kpi-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+.kpi.good .kpi-value { color: var(--accent2); }
+.kpi.warn .kpi-value { color: var(--amber); }
+.kpi.bad .kpi-value { color: var(--red); }
+.kpi.neutral .kpi-value { color: var(--blue); }
+
+/* BADGES */
+.badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; letter-spacing: 0.04em; }
+.badge-green { background: var(--accent-light); color: var(--accent); }
+.badge-red { background: var(--red-light); color: var(--red); }
+.badge-amber { background: var(--amber-light); color: var(--amber); }
+.badge-blue { background: var(--blue-light); color: var(--blue); }
+.badge-gold { background: var(--gold-light); color: var(--gold); }
+
+/* FORMS */
+.form-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.form-row label { font-size: 13px; color: var(--text2); min-width: 180px; flex-shrink: 0; }
+.form-row input, .form-row select, .form-row textarea { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text); width: 100%; transition: border 0.2s; }
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus { outline: none; border-color: var(--accent2); }
+.form-row textarea { resize: vertical; min-height: 60px; }
+.input-prefix { display: flex; align-items: center; }
+.input-prefix span { background: var(--surface2); border: 1px solid var(--border); border-right: none; border-radius: var(--radius-sm) 0 0 var(--radius-sm); padding: 8px 10px; font-size: 13px; color: var(--text2); }
+.input-prefix input { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; border: none; transition: all 0.2s; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-danger { background: var(--red-light); color: var(--red); }
+.btn-export { background: var(--blue); color: white; }
+.btn-export:hover { background: var(--blue-light); color: var(--blue); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* PROGRESS BAR */
+.progress-wrap { background: var(--surface2); border-radius: 99px; height: 10px; overflow: hidden; margin: 8px 0; }
+.progress-bar { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+.progress-green { background: var(--accent2); }
+.progress-amber { background: #D97706; }
+.progress-red { background: var(--red); }
+
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg); }
+
+/* DIVIDER */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+/* ALERT */
+.alert { border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; margin-bottom: 12px; display: flex; gap: 10px; align-items: flex-start; }
+.alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.alert-green { background: var(--accent-light); color: var(--accent); border-left: 3px solid var(--accent2); }
+.alert-amber { background: var(--amber-light); color: var(--amber); border-left: 3px solid #D97706; }
+.alert-red { background: var(--red-light); color: var(--red); border-left: 3px solid var(--red); }
+
+/* MACHINE GRID */
+.machine-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.machine-name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+.machine-spec { font-size: 11px; color: var(--text3); margin-bottom: 10px; }
+.machine-stat { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+.machine-stat:last-child { border-bottom: none; }
+.machine-stat span:last-child { font-weight: 500; }
+
+/* PAYOFF TIMELINE */
+.timeline { position: relative; padding-left: 24px; }
+.timeline::before { content:''; position:absolute; left:7px; top:8px; bottom:8px; width:2px; background:var(--border); }
+.tl-item { position: relative; margin-bottom: 20px; }
+.tl-dot { position: absolute; left: -24px; top: 4px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); }
+.tl-dot.done { background: var(--accent2); border-color: var(--accent2); }
+.tl-dot.active { background: #D97706; border-color: #D97706; }
+.tl-dot.future { background: var(--surface2); }
+.tl-date { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: 0.05em; }
+.tl-amount { font-family: 'DM Serif Display', serif; font-size: 22px; }
+.tl-note { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* ATTENDANT VIEW */
+.attendant-header { background: var(--accent); color: white; border-radius: var(--radius); padding: 20px 24px; margin-bottom: 20px; }
+.attendant-header h2 { font-family: 'DM Serif Display', serif; font-size: 24px; margin-bottom: 4px; }
+.attendant-header p { opacity: 0.75; font-size: 13px; }
+.machine-input-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.machine-input { background: var(--surface2); border-radius: var(--radius-sm); padding: 12px; text-align: center; }
+.machine-input label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+.machine-input input { width: 70px; text-align: center; border: 1px solid var(--border); border-radius: 6px; padding: 6px; font-size: 16px; font-weight: 500; background: white; }
+.shift-complete { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; border: none; padding: 16px; border-radius: var(--radius); font-size: 16px; font-weight: 600; width: 100%; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 16px; letter-spacing: 0.02em; transition: opacity 0.2s; }
+.shift-complete:hover { opacity: 0.9; }
+
+/* CHART CONTAINER */
+.chart-container { position: relative; width: 100%; height: 240px; }
+
+/* NOTIFICATION */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--accent); color: white; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; box-shadow: var(--shadow-md); transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 999; }
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* SECTION HEADING */
+.section-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-heading h3 { font-family: 'DM Serif Display', serif; font-size: 18px; }
+
+/* UTILITY RATES BAR */
+.util-rate-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.util-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.util-chip-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* RESPONSIVE */
+@media(max-width: 640px) {
+  .grid4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .grid3 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .grid2 { grid-template-columns: 1fr; }
+  .form-row { flex-direction: column; align-items: flex-start; }
+  .form-row label { min-width: unset; }
+  .view { padding: 16px; }
+}
+
+/* CPA EXPORT SECTION */
+.metric { background: var(--surface2); border-radius: var(--border-radius-md, 8px); padding: 10px 14px; }
+.metric-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.metric-value { font-size: 20px; font-weight: 500; color: var(--text); }
+.cpa-note { font-size: 12px; color: var(--text2); line-height: 1.6; padding: 12px 14px; background: var(--surface2); border-radius: var(--radius-sm); margin-bottom: 14px; }
+
+/* OFF-SYSTEM PAYMENTS */
+.offsys-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.offsys-total-card { border-radius: var(--radius-sm); padding: 10px 12px; text-align: center; }
+.offsys-total-card.cash { background: var(--accent-light); border: 1px solid var(--accent2); }
+.offsys-total-card.ath  { background: var(--blue-light);   border: 1px solid var(--blue); }
+.offsys-total-label { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 3px; }
+.offsys-total-card.cash .offsys-total-label { color: var(--accent); }
+.offsys-total-card.ath  .offsys-total-label { color: var(--blue); }
+.offsys-total-value { font-family: "DM Serif Display", serif; font-size: 22px; }
+.offsys-total-card.cash .offsys-total-value { color: var(--accent); }
+.offsys-total-card.ath  .offsys-total-value { color: var(--blue); }
+.offsys-add-form { background: var(--surface2); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px; }
+.offsys-add-row { display: grid; grid-template-columns: 90px 1fr 1fr; gap: 8px; margin-bottom: 8px; align-items: center; }
+.offsys-add-row select, .offsys-add-row input { font-size: 12px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); width: 100%; }
+.offsys-add-btn { background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); padding: 7px 14px; font-size: 12px; font-weight: 500; cursor: pointer; width: 100%; font-family: "DM Sans", sans-serif; }
+.offsys-add-btn:hover { background: var(--accent2); }
+.offsys-log { max-height: 220px; overflow-y: auto; }
+.offsys-entry { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; gap: 6px; }
+.offsys-entry:last-child { border-bottom: none; }
+.offsys-entry-left { display: flex; flex-direction: column; gap: 2px; }
+.offsys-entry-meta { color: var(--text2); font-size: 11px; }
+.offsys-entry-method { font-size: 10px; font-weight: 600; letter-spacing: .04em; padding: 1px 7px; border-radius: 10px; display:inline-block; }
+.offsys-method-cash { background: var(--accent-light); color: var(--accent); }
+.offsys-method-ath  { background: var(--blue-light);   color: var(--blue); }
+.offsys-entry-amount { font-weight: 600; font-size: 13px; color: var(--text); }
+.offsys-entry-del { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 14px; padding: 2px 6px; line-height: 1; border-radius: 4px; }
+.offsys-entry-del:hover { color: var(--red); background: var(--red-light); }
+.offsys-empty { text-align: center; color: var(--text3); font-size: 12px; padding: 16px 0; }
+
+/* FASCARD INTEGRATION */
+.fascard-status { display:flex; align-items:center; gap:8px; font-size:13px; }
+.fc-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.fc-dot.connected { background:#1D9E75; }
+.fc-dot.disconnected { background:#E24B4A; }
+.fc-dot.syncing { background:#D97706; animation: pulse 1s infinite; }
+.fc-dot.unknown { background:#9CA3AF; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.fc-sync-panel { background:var(--accent-light); border:1px solid var(--accent2); border-radius:var(--radius); padding:16px 20px; margin-bottom:20px; }
+.fc-sync-panel.disconnected { background:var(--surface2); border-color:var(--border); }
+.fc-sync-panel.error { background:var(--red-light); border-color:var(--red); }
+.fc-machine-map { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:6px; margin-top:10px; }
+.fc-machine-tag { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px 10px; font-size:11px; display:flex; justify-content:space-between; align-items:center; }
+.fc-machine-tag.offline { background:var(--red-light); border-color:var(--red); color:var(--red); }
+.fc-machine-tag.synced { background:var(--accent-light); border-color:var(--accent2); }
+.fc-machine-tag .fc-id { font-weight:600; color:var(--text2); }
+.fc-machine-tag.offline .fc-id { color:var(--red); }
+.fc-sync-log { max-height:160px; overflow-y:auto; font-size:11px; color:var(--text2); margin-top:8px; }
+.fc-sync-log-entry { padding:3px 0; border-bottom:1px solid var(--border); }
+.fc-sync-log-entry:last-child { border-bottom:none; }
+.fc-offline-alert { background:var(--red-light); border:1px solid var(--red); border-radius:var(--radius-sm); padding:10px 14px; font-size:12px; color:var(--red); margin-bottom:12px; display:flex; gap:8px; align-items:flex-start; }
+
+.daily-entry-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+@media(max-width: 900px) { .daily-entry-grid { grid-template-columns: 1fr 1fr; } }
+@media(max-width: 600px) { .daily-entry-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">Laundromat<span> 973</span> &nbsp;·&nbsp; Operations Dashboard</div>
+  <div class="nav-right">
+    <span class="nav-date" id="navDate"></span>
+    <button class="lang-btn active" id="btnEN" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" id="btnES" onclick="setLang('es')">ES</button>
+  </div>
+</nav>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('owner')" id="tab-owner"><span class="tab-icon">▦</span><span data-en="Owner Dashboard" data-es="Panel del Dueño">Owner Dashboard</span></div>
+  <div class="tab" onclick="switchTab('attendant')" id="tab-attendant"><span class="tab-icon">◎</span><span data-en="Daily Entry" data-es="Entrada Diaria">Daily Entry</span></div>
+  <div class="tab" onclick="switchTab('machines')" id="tab-machines"><span class="tab-icon">⊞</span><span data-en="Machine Tracker" data-es="Rastreo de Máquinas">Machine Tracker</span></div>
+  <div class="tab" onclick="switchTab('finances')" id="tab-finances"><span class="tab-icon">$</span><span data-en="Financials & P&L" data-es="Finanzas y P&G">Financials & P&L</span></div>
+  <div class="tab" onclick="switchTab('payoff')" id="tab-payoff"><span class="tab-icon">◈</span><span data-en="Seller Payoff" data-es="Pago al Vendedor">Seller Payoff</span></div>
+  <div class="tab" onclick="switchTab('settings')" id="tab-settings"><span class="tab-icon">⚙</span><span data-en="Settings" data-es="Configuración">Settings</span></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 1: OWNER DASHBOARD
+════════════════════════════════════════════ -->
+<div class="view active" id="view-owner">
+
+  <!-- KPI Row -->
+  <div class="grid4 section-gap">
+    <div class="kpi" id="kpi-revenue">
+      <div class="kpi-label" data-en="This Month Revenue" data-es="Ingresos del Mes">This Month Revenue</div>
+      <div class="kpi-value" id="kv-revenue">$0</div>
+      <div class="kpi-sub" id="ks-revenue">0 days logged</div>
+    </div>
+    <div class="kpi" id="kpi-expenses">
+      <div class="kpi-label" data-en="This Month Expenses" data-es="Gastos del Mes">This Month Expenses</div>
+      <div class="kpi-value" id="kv-expenses">$0</div>
+      <div class="kpi-sub" id="ks-expenses">fixed + variable</div>
+    </div>
+    <div class="kpi" id="kpi-profit">
+      <div class="kpi-label" data-en="Net Profit / Loss" data-es="Ganancia / Pérdida Neta">Net Profit / Loss</div>
+      <div class="kpi-value" id="kv-profit">$0</div>
+      <div class="kpi-sub" id="ks-profit">this month</div>
+    </div>
+    <div class="kpi neutral" id="kpi-payoff">
+      <div class="kpi-label" data-en="Seller Balance Remaining" data-es="Balance Pendiente al Vendedor">Seller Balance Remaining</div>
+      <div class="kpi-value" id="kv-payoff">$130,000</div>
+      <div class="kpi-sub" data-en="after May 2026 payment" data-es="después del pago de mayo 2026">after May 2026 payment</div>
+    </div>
+  </div>
+
+
+  <!-- FasCard Sync Panel -->
+  <div id="fc-sync-panel" class="fc-sync-panel disconnected section-gap">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:4px" data-en="FasCard Integration" data-es="Integración FasCard">FasCard Integration</div>
+        <div class="fascard-status">
+          <div class="fc-dot unknown" id="fc-status-dot"></div>
+          <span id="fc-status-text" style="font-weight:500" data-en="Not connected — configure in Settings" data-es="No conectado — configurar en Ajustes">Not connected — configure in Settings</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px" id="fc-last-sync" data-en="Last sync: never" data-es="Última sincronización: nunca">Last sync: never</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary btn-sm" onclick="fasCardSync()" id="fc-sync-btn" data-en="Sync Now" data-es="Sincronizar Ahora">Sync Now</button>
+        <button class="btn btn-secondary btn-sm" onclick="switchTab('settings')" data-en="Configure" data-es="Configurar">Configure</button>
+      </div>
+    </div>
+    <div id="fc-offline-alert" style="display:none" class="fc-offline-alert">
+      <span style="font-size:14px;flex-shrink:0">⚠</span>
+      <div>
+        <strong data-en="Offline Machines Detected:" data-es="Máquinas Desconectadas Detectadas:">Offline Machines Detected:</strong>
+        <span id="fc-offline-list">Dexter P3 (ID 28), Dexter P4 (ID 29)</span>
+        <span data-en=" — check FasCard portal for details." data-es=" — revise el portal FasCard para detalles."> — check FasCard portal for details.</span>
+      </div>
+    </div>
+    <div id="fc-sync-log" class="fc-sync-log" style="display:none"></div>
+  </div>
+
+  <div class="grid2 section-gap">
+    <!-- Break-Even Tracker -->
+    <div class="card">
+      <div class="section-heading">
+        <h3 data-en="Break-Even Tracker" data-es="Rastreador de Punto de Equilibrio">Break-Even Tracker</h3>
+        <span class="badge" id="be-badge">—</span>
+      </div>
+      <div id="be-alert"></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px">
+        <span data-en="Monthly revenue" data-es="Ingresos mensuales">Monthly revenue</span>
+        <span id="be-rev-disp">$0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px">
+        <span data-en="Monthly costs (est.)" data-es="Costos mensuales (est.)">Monthly costs (est.)</span>
+        <span id="be-cost-disp">$0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:8px">
+        <span data-en="Break-even target/month" data-es="Meta de equilibrio/mes">Break-even target/month</span>
+        <span id="be-target-disp" style="font-weight:600">$0</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar progress-green" id="be-bar" style="width:0%"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px" id="be-pct-label">0% of break-even covered</div>
+    </div>
+
+    <!-- Payoff Progress This Year -->
+    <div class="card">
+      <div class="section-heading">
+        <h3 data-en="2026 Payoff Goal" data-es="Meta de Pago 2026">2026 Payoff Goal</h3>
+        <span class="badge badge-gold" data-en="Due May 2026" data-es="Vence Mayo 2026">Due May 2026</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px">
+        <span data-en="Target (May 2026)" data-es="Meta (Mayo 2026)">Target (May 2026)</span>
+        <span style="font-weight:600">$70,000</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px">
+        <span data-en="Funded from savings" data-es="Financiado de ahorros">Funded from savings</span>
+        <span style="font-weight:600;color:var(--accent2)">$70,000</span>
+      </div>
+      <div class="progress-wrap" style="margin:8px 0">
+        <div class="progress-bar progress-green" style="width:100%"></div>
+      </div>
+      <div class="alert alert-green" style="margin-top:8px;margin-bottom:0">
+        <span class="alert-icon">✓</span>
+        <span data-en="May 2026 payment of $70,000 is fully funded from personal savings. Next obligation: $65,000 due 2027." data-es="El pago de $70,000 en mayo 2026 está completamente financiado de ahorros personales. Próxima obligación: $65,000 en 2027.">May 2026 payment of $70,000 is fully funded from personal savings. Next obligation: $65,000 due 2027.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Utility Rates Reference -->
+  <div class="card section-gap">
+    <div class="card-title" data-en="Puerto Rico Utility Rates (Active)" data-es="Tarifas de Servicios PR (Activas)">Puerto Rico Utility Rates (Active)</div>
+    <div class="util-rate-bar">
+      <div class="util-chip"><div class="util-chip-dot" style="background:#1B4332"></div><span data-en="Electricity (LUMA)" data-es="Electricidad (LUMA)">Electricity (LUMA)</span><strong id="chip-elec">$0.30/kWh</strong></div>
+      <div class="util-chip"><div class="util-chip-dot" style="background:#92400E"></div><span data-en="Propane" data-es="Propano">Propane</span><strong id="chip-prop">$3.90/gal</strong></div>
+      <div class="util-chip"><div class="util-chip-dot" style="background:#1E3A5F"></div><span data-en="Water+Sewer (PRASA)" data-es="Agua+Alcantarillado (PRASA)">Water+Sewer (PRASA)</span><strong id="chip-water">$0.032/gal</strong></div>
+    </div>
+    <div class="grid3">
+      <div class="machine-card">
+        <div class="machine-name">Encore Pro Washers × 9</div>
+        <div class="machine-spec">22 lb · 120V · 15A · 14 gal/cycle</div>
+        <div class="machine-stat"><span data-en="Elec/cycle" data-es="Elec/ciclo">Elec/cycle</span><span id="ms-ew-elec">—</span></div>
+        <div class="machine-stat"><span data-en="Water/cycle" data-es="Agua/ciclo">Water/cycle</span><span id="ms-ew-water">—</span></div>
+        <div class="machine-stat"><span data-en="Cost/cycle" data-es="Costo/ciclo">Cost/cycle</span><span id="ms-ew-total">—</span></div>
+      </div>
+      <div class="machine-card">
+        <div class="machine-name">Dexter T-600 Washers × 4</div>
+        <div class="machine-spec">40 lb · 240V · 15A · 35.1 gal/cycle</div>
+        <div class="machine-stat"><span data-en="Elec/cycle" data-es="Elec/ciclo">Elec/cycle</span><span id="ms-dw-elec">—</span></div>
+        <div class="machine-stat"><span data-en="Water/cycle" data-es="Agua/ciclo">Water/cycle</span><span id="ms-dw-water">—</span></div>
+        <div class="machine-stat"><span data-en="Cost/cycle" data-es="Costo/ciclo">Cost/cycle</span><span id="ms-dw-total">—</span></div>
+      </div>
+      <div class="machine-card">
+        <div class="machine-name">Encore Pro Dryers × 4</div>
+        <div class="machine-spec">22 lb · Gas · 19k BTU/hr</div>
+        <div class="machine-stat"><span data-en="Propane/cycle" data-es="Propano/ciclo">Propane/cycle</span><span id="ms-ed-prop">—</span></div>
+        <div class="machine-stat"><span data-en="Elec/cycle" data-es="Elec/ciclo">Elec/cycle</span><span id="ms-ed-elec">—</span></div>
+        <div class="machine-stat"><span data-en="Cost/cycle" data-es="Costo/ciclo">Cost/cycle</span><span id="ms-ed-total">—</span></div>
+      </div>
+      <div class="machine-card">
+        <div class="machine-name">Dexter T-30X2 Dryers × 4 units</div>
+        <div class="machine-spec">8 pockets · 30 lb ea · 90k BTU/hr ea</div>
+        <div class="machine-stat"><span data-en="Propane/pocket/cycle" data-es="Propano/bolsillo/ciclo">Propane/pocket/cycle</span><span id="ms-dd-prop">—</span></div>
+        <div class="machine-stat"><span data-en="Elec/pocket/cycle" data-es="Elec/bolsillo/ciclo">Elec/pocket/cycle</span><span id="ms-dd-elec">—</span></div>
+        <div class="machine-stat"><span data-en="Cost/pocket/cycle" data-es="Costo/bolsillo/ciclo">Cost/pocket/cycle</span><span id="ms-dd-total">—</span></div>
+      </div>
+      <div class="machine-card" style="grid-column:span 2">
+        <div class="machine-name" data-en="Estimated Monthly Utility Costs (at current utilization)" data-es="Costos Mensuales Estimados (a utilización actual)">Estimated Monthly Utility Costs (at current utilization)</div>
+        <div class="machine-spec" data-en="Based on cycles logged this month vs. spec-sheet consumption" data-es="Basado en ciclos registrados este mes vs. hoja de especificaciones">Based on cycles logged this month vs. spec-sheet consumption</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+          <div style="text-align:center"><div style="font-size:11px;color:var(--text3)" data-en="Electricity" data-es="Electricidad">Electricity</div><div style="font-family:'DM Serif Display',serif;font-size:20px" id="util-elec-mo">$0</div></div>
+          <div style="text-align:center"><div style="font-size:11px;color:var(--text3)" data-en="Propane" data-es="Propano">Propane</div><div style="font-family:'DM Serif Display',serif;font-size:20px" id="util-prop-mo">$0</div></div>
+          <div style="text-align:center"><div style="font-size:11px;color:var(--text3)" data-en="Water" data-es="Agua">Water</div><div style="font-family:'DM Serif Display',serif;font-size:20px" id="util-water-mo">$0</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Shift Logs -->
+  <div class="card section-gap">
+    <div class="section-heading">
+      <h3 data-en="Recent Shift Logs" data-es="Registros Recientes de Turno">Recent Shift Logs</h3>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-en="Date" data-es="Fecha">Date</th>
+            <th data-en="Staff" data-es="Personal">Staff</th>
+            <th data-en="Revenue" data-es="Ingresos">Revenue</th>
+            <th data-en="Cycles (W/D)" data-es="Ciclos (L/S)">Cycles (W/D)</th>
+            <th data-en="Soap Used" data-es="Jabón Usado">Soap Used</th>
+            <th data-en="Issues" data-es="Problemas">Issues</th>
+          </tr>
+        </thead>
+        <tbody id="shift-log-table">
+          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px" data-en="No shifts logged yet. Use Daily Entry tab." data-es="No hay turnos registrados. Use la pestaña Entrada Diaria.">No shifts logged yet. Use Daily Entry tab.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 2: ATTENDANT DAILY ENTRY
+════════════════════════════════════════════ -->
+<div class="view" id="view-attendant">
+  <div class="attendant-header">
+    <h2 data-en="Daily Shift Entry" data-es="Registro de Turno Diario">Daily Shift Entry</h2>
+    <p data-en="Fill out this form at the END of each shift. This data powers the owner's financial reports." data-es="Complete este formulario al FINAL de cada turno. Estos datos alimentan los reportes financieros del dueño.">Fill out this form at the END of each shift. This data powers the owner's financial reports.</p>
+  </div>
+
+  <div class="daily-entry-grid">
+    <!-- COL 1: Shift info + Revenue + Supplies + Notes -->
+    <div>
+      <div class="card section-gap">
+        <div class="card-title" data-en="Shift Information" data-es="Información del Turno">Shift Information</div>
+        <div class="form-row"><label data-en="Date" data-es="Fecha">Date</label><input type="date" id="s-date"></div>
+        <div class="form-row"><label data-en="Staff Name" data-es="Nombre del Personal">Staff Name</label><input type="text" id="s-staff" placeholder="Your name"></div>
+        <div class="form-row"><label data-en="Shift" data-es="Turno">Shift</label>
+          <select id="s-shift">
+            <option data-en="Morning (6am–2pm)" data-es="Mañana (6am–2pm)">Morning (6am–2pm)</option>
+            <option data-en="Afternoon (2pm–10pm)" data-es="Tarde (2pm–10pm)">Afternoon (2pm–10pm)</option>
+            <option data-en="Full day" data-es="Día completo">Full day</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card section-gap">
+        <div class="card-title" data-en="Card / FasCard Revenue" data-es="Ingresos Tarjeta / FasCard">Card / FasCard Revenue</div>
+        <div class="form-row">
+          <label data-en="Self-service revenue ($)" data-es="Ingresos autoservicio ($)">Self-service revenue ($)</label>
+          <div class="input-prefix"><span>$</span><input type="number" id="s-rev-self" placeholder="0.00" step="0.01" min="0"></div>
+        </div>
+        <div class="form-row">
+          <label data-en="Drop-off revenue ($)" data-es="Ingresos drop-off ($)">Drop-off revenue ($)</label>
+          <div class="input-prefix"><span>$</span><input type="number" id="s-rev-drop" placeholder="0.00" step="0.01" min="0"></div>
+        </div>
+        <div class="form-row">
+          <label data-en="Drop-off lbs received" data-es="Libras drop-off recibidas">Drop-off lbs received</label>
+          <input type="number" id="s-drop-lbs" placeholder="0" min="0">
+        </div>
+        <div class="form-row">
+          <label data-en="Discounts given ($)" data-es="Descuentos dados ($)">Discounts given ($)</label>
+          <div class="input-prefix"><span>$</span><input type="number" id="s-discount" placeholder="0.00" step="0.01" min="0"></div>
+        </div>
+      </div>
+
+      <div class="card section-gap">
+        <div class="card-title" data-en="Soap & Supplies Used" data-es="Jabón y Suministros Usados">Soap & Supplies Used</div>
+        <div class="form-row"><label data-en="Detergent used (oz)" data-es="Detergente usado (oz)">Detergent used (oz)</label><input type="number" id="s-soap" placeholder="0" min="0"></div>
+        <div class="form-row"><label data-en="Fabric softener used (oz)" data-es="Suavizante usado (oz)">Fabric softener used (oz)</label><input type="number" id="s-softener" placeholder="0" min="0"></div>
+        <div class="form-row"><label data-en="Drop-off bags used (#)" data-es="Bolsas drop-off usadas (#)">Drop-off bags used (#)</label><input type="number" id="s-bags" placeholder="0" min="0"></div>
+      </div>
+
+      <div class="card section-gap">
+        <div class="card-title" data-en="Equipment Issues & Notes" data-es="Problemas de Equipo y Notas">Equipment Issues & Notes</div>
+        <div class="form-row"><label data-en="Machine issues" data-es="Problemas de máquinas">Machine issues</label><textarea id="s-issues" placeholder="e.g. Encore W3 making noise..."></textarea></div>
+        <div class="form-row"><label data-en="Customer complaints" data-es="Quejas de clientes">Customer complaints</label><textarea id="s-complaints" placeholder="e.g. Customer reported long wait..."></textarea></div>
+        <div class="form-row"><label data-en="General notes" data-es="Notas generales">General notes</label><textarea id="s-notes" placeholder="Anything else the owner should know..."></textarea></div>
+      </div>
+    </div>
+
+    <!-- COL 2: Off-System Payments panel -->
+    <div>
+      <div class="card section-gap" style="position:sticky;top:72px">
+        <div class="card-title" data-en="Off-System Payments" data-es="Pagos Fuera del Sistema">Off-System Payments</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:10px" data-en="Log every Cash and ATH Móvil transaction individually." data-es="Registre cada transacción de Efectivo y ATH Móvil individualmente.">Log every Cash and ATH Móvil transaction individually.</div>
+
+        <!-- Totals -->
+        <div class="offsys-totals">
+          <div class="offsys-total-card cash">
+            <div class="offsys-total-label" data-en="Cash Total" data-es="Total Efectivo">Cash Total</div>
+            <div class="offsys-total-value" id="offsys-cash-total">/bin/sh.00</div>
+          </div>
+          <div class="offsys-total-card ath">
+            <div class="offsys-total-label">ATH Móvil Total</div>
+            <div class="offsys-total-value" id="offsys-ath-total">/bin/sh.00</div>
+          </div>
+        </div>
+
+        <!-- Add transaction form -->
+        <div class="offsys-add-form">
+          <div class="offsys-add-row">
+            <div class="input-prefix" style="grid-column:span 1">
+              <span>$</span><input type="number" id="os-amount" placeholder="0.00" step="0.01" min="0" style="border-left:none;border-radius:0 var(--radius-sm) var(--radius-sm) 0">
+            </div>
+            <select id="os-method">
+              <option value="Cash" data-en="Cash" data-es="Efectivo">Cash</option>
+              <option value="ATH Movil">ATH Móvil</option>
+            </select>
+            <select id="os-service">
+              <option value="Wash" data-en="Wash" data-es="Lavado">Wash</option>
+              <option value="Dry" data-en="Dry" data-es="Secado">Dry</option>
+              <option value="Drop-off" data-en="Drop-off" data-es="Drop-off">Drop-off</option>
+              <option value="Other" data-en="Other" data-es="Otro">Other</option>
+            </select>
+          </div>
+          <div class="offsys-add-row" style="grid-template-columns:1fr">
+            <select id="os-machine">
+              <option value="N/A">Machine / Máquina — N/A (Drop-off)</option>
+              <optgroup label="Encore Washers / Lavadoras Encore">
+                <option>Encore W1</option><option>Encore W2</option><option>Encore W3</option>
+                <option>Encore W4</option><option>Encore W5</option><option>Encore W6</option>
+                <option>Encore W7</option><option>Encore W8</option><option>Encore W9</option>
+              </optgroup>
+              <optgroup label="Dexter Washers / Lavadoras Dexter">
+                <option>Dexter W1</option><option>Dexter W2</option><option>Dexter W3</option><option>Dexter W4</option>
+              </optgroup>
+              <optgroup label="Encore Dryers / Secadoras Encore">
+                <option>Encore D1</option><option>Encore D2</option><option>Encore D3</option><option>Encore D4</option>
+              </optgroup>
+              <optgroup label="Dexter Pockets / Bolsillos Dexter">
+                <option>Dexter P1</option><option>Dexter P2</option><option>Dexter P3</option><option>Dexter P4</option>
+                <option>Dexter P5</option><option>Dexter P6</option><option>Dexter P7</option><option>Dexter P8</option>
+              </optgroup>
+            </select>
+          </div>
+          <button class="offsys-add-btn" onclick="addOffSysTransaction()" data-en="+ Add Transaction" data-es="+ Agregar Transacción">+ Add Transaction</button>
+        </div>
+
+        <!-- Today's log -->
+        <div style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:6px" data-en="This Shift" data-es="Este Turno">This Shift</div>
+        <div class="offsys-log" id="offsys-log">
+          <div class="offsys-empty" data-en="No transactions yet." data-es="Sin transacciones aún.">No transactions yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COL 3: Cycles per machine -->
+    <div>
+      <div class="card section-gap">
+        <div class="card-title" data-en="Cycles Per Machine" data-es="Ciclos Por Máquina">Cycles Per Machine</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px" data-en="Enter the number of cycles each machine completed during your shift." data-es="Ingrese el número de ciclos que cada máquina completó durante su turno.">Enter cycles each machine completed.</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px" data-en="WASHERS" data-es="LAVADORAS">WASHERS</div>
+        <div class="machine-input-grid" style="margin-bottom:14px">
+          <div class="machine-input"><label>Encore W1</label><input type="number" id="c-ew1" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore W2</label><input type="number" id="c-ew2" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore W3</label><input type="number" id="c-ew3" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore W4</label><input type="number" id="c-ew4" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore W5</label><input type="number" id="c-ew5" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore W6</label><input type="number" id="c-ew6" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore W7</label><input type="number" id="c-ew7" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore W8</label><input type="number" id="c-ew8" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore W9</label><input type="number" id="c-ew9" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore W10</label><input type="number" id="c-ew10" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter W1</label><input type="number" id="c-dw1" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter W2</label><input type="number" id="c-dw2" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter W3</label><input type="number" id="c-dw3" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter W4</label><input type="number" id="c-dw4" placeholder="0" min="0"></div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px" data-en="DRYERS (each pocket)" data-es="SECADORAS (cada bolsillo)">DRYERS (each pocket)</div>
+        <div class="machine-input-grid">
+          <div class="machine-input"><label>Encore D1</label><input type="number" id="c-ed1" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore D2</label><input type="number" id="c-ed2" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore D3</label><input type="number" id="c-ed3" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Encore D4</label><input type="number" id="c-ed4" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter P1</label><input type="number" id="c-dp1" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter P2</label><input type="number" id="c-dp2" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter P3</label><input type="number" id="c-dp3" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter P4</label><input type="number" id="c-dp4" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter P5</label><input type="number" id="c-dp5" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter P6</label><input type="number" id="c-dp6" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter P7</label><input type="number" id="c-dp7" placeholder="0" min="0"></div>
+          <div class="machine-input"><label>Dexter P8</label><input type="number" id="c-dp8" placeholder="0" min="0"></div>
+        </div>
+      </div>
+      <button class="shift-complete" onclick="submitShift()" data-en="✓ Submit Shift Report" data-es="✓ Enviar Reporte de Turno">✓ Submit Shift Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 3: MACHINE TRACKER
+════════════════════════════════════════════ -->
+<div class="view" id="view-machines">
+  <div class="section-heading section-gap">
+    <h3 data-en="Machine Energy & Cost Tracker" data-es="Rastreador de Energía y Costos por Máquina">Machine Energy & Cost Tracker</h3>
+  </div>
+
+  <div class="grid2 section-gap">
+    <div class="card">
+      <div class="card-title" data-en="Month-to-Date Cycles by Machine" data-es="Ciclos del Mes por Máquina">Month-to-Date Cycles by Machine</div>
+      <div class="chart-container"><canvas id="cyclesChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title" data-en="Utility Cost Breakdown (MTD)" data-es="Desglose de Costos de Servicios (MTD)">Utility Cost Breakdown (MTD)</div>
+      <div class="chart-container"><canvas id="utilityChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card section-gap">
+    <div class="card-title" data-en="Per-Machine Cost Analysis" data-es="Análisis de Costo por Máquina">Per-Machine Cost Analysis</div>
+    <div class="table-wrap">
+      <table id="machine-cost-table">
+        <thead>
+          <tr>
+            <th data-en="Machine" data-es="Máquina">Machine</th>
+            <th data-en="Type" data-es="Tipo">Type</th>
+            <th data-en="Cycles (MTD)" data-es="Ciclos (MTD)">Cycles (MTD)</th>
+            <th data-en="Elec Cost" data-es="Costo Eléc.">Elec Cost</th>
+            <th data-en="Propane Cost" data-es="Costo Propano">Propane Cost</th>
+            <th data-en="Water Cost" data-es="Costo Agua">Water Cost</th>
+            <th data-en="Total Cost" data-es="Costo Total">Total Cost</th>
+            <th data-en="Cost/Cycle" data-es="Costo/Ciclo">Cost/Cycle</th>
+          </tr>
+        </thead>
+        <tbody id="machine-cost-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Off-System Payments History -->
+  <div class="card section-gap">
+    <div class="section-heading">
+      <h3 data-en="Off-System Payment History" data-es="Historial de Pagos Fuera del Sistema">Off-System Payment History</h3>
+    </div>
+    <div class="grid2" style="margin-bottom:14px">
+      <div class="metric">
+        <div class="metric-label" data-en="Month-to-Date Cash" data-es="Efectivo del Mes">Month-to-Date Cash</div>
+        <div class="metric-value" id="mtd-cash-total">/bin/sh.00</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Month-to-Date ATH Móvil</div>
+        <div class="metric-value" id="mtd-ath-total">/bin/sh.00</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-en="Date" data-es="Fecha">Date</th>
+            <th data-en="Staff" data-es="Personal">Staff</th>
+            <th data-en="Method" data-es="Método">Method</th>
+            <th data-en="Service" data-es="Servicio">Service</th>
+            <th data-en="Machine" data-es="Máquina">Machine</th>
+            <th data-en="Amount" data-es="Monto">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="offsys-history-table">
+          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px" data-en="No off-system transactions recorded yet." data-es="No hay transacciones fuera del sistema aún.">No off-system transactions recorded yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Maintenance Log -->
+  <div class="card section-gap">
+    <div class="section-heading">
+      <h3 data-en="Maintenance & Repair Log" data-es="Registro de Mantenimiento y Reparaciones">Maintenance & Repair Log</h3>
+      <button class="btn btn-secondary btn-sm" onclick="showAddMaintenance()" data-en="+ Add Entry" data-es="+ Agregar">+ Add Entry</button>
+    </div>
+    <div id="maint-form" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px">
+      <div class="grid2">
+        <div class="form-row"><label data-en="Date" data-es="Fecha">Date</label><input type="date" id="m-date"></div>
+        <div class="form-row"><label data-en="Machine" data-es="Máquina">Machine</label><input type="text" id="m-machine" placeholder="e.g. Dexter W2"></div>
+        <div class="form-row"><label data-en="Description" data-es="Descripción">Description</label><input type="text" id="m-desc" placeholder="Issue description"></div>
+        <div class="form-row"><label data-en="Cost ($)" data-es="Costo ($)">Cost ($)</label><div class="input-prefix"><span>$</span><input type="number" id="m-cost" placeholder="0.00" step="0.01"></div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-primary btn-sm" onclick="saveMaintenance()" data-en="Save" data-es="Guardar">Save</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('maint-form').style.display='none'" data-en="Cancel" data-es="Cancelar">Cancel</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-en="Date" data-es="Fecha">Date</th>
+            <th data-en="Machine" data-es="Máquina">Machine</th>
+            <th data-en="Description" data-es="Descripción">Description</th>
+            <th data-en="Cost" data-es="Costo">Cost</th>
+          </tr>
+        </thead>
+        <tbody id="maint-table"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px" data-en="No maintenance records yet." data-es="No hay registros de mantenimiento aún.">No maintenance records yet.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 4: FINANCIALS & P&L
+════════════════════════════════════════════ -->
+<div class="view" id="view-finances">
+
+  <!-- Monthly Fixed Costs Entry -->
+  <div class="card section-gap">
+    <div class="section-heading">
+      <h3 data-en="Monthly Fixed Costs" data-es="Costos Fijos Mensuales">Monthly Fixed Costs</h3>
+      <span class="badge badge-blue" data-en="Update monthly" data-es="Actualizar mensualmente">Update monthly</span>
+    </div>
+    <div class="grid3">
+      <div class="form-row"><label data-en="Rent / Lease ($)" data-es="Renta / Arrendamiento ($)">Rent / Lease ($)</label><div class="input-prefix"><span>$</span><input type="number" id="fc-rent" value="0" onchange="saveFixedCosts()"></div></div>
+      <div class="form-row"><label data-en="Seller payment (this month)" data-es="Pago al vendedor (este mes)">Seller payment (this month)</label><div class="input-prefix"><span>$</span><input type="number" id="fc-seller" value="0" onchange="saveFixedCosts()"></div></div>
+      <div class="form-row"><label data-en="Labor / Wages ($)" data-es="Mano de Obra ($)">Labor / Wages ($)</label><div class="input-prefix"><span>$</span><input type="number" id="fc-labor" value="0" onchange="saveFixedCosts()"></div></div>
+      <div class="form-row"><label data-en="Insurance ($)" data-es="Seguro ($)">Insurance ($)</label><div class="input-prefix"><span>$</span><input type="number" id="fc-ins" value="0" onchange="saveFixedCosts()"></div></div>
+      <div class="form-row"><label data-en="Supplies & Detergent ($)" data-es="Suministros y Detergente ($)">Supplies & Detergent ($)</label><div class="input-prefix"><span>$</span><input type="number" id="fc-supplies" value="0" onchange="saveFixedCosts()"></div></div>
+      <div class="form-row"><label data-en="Maintenance Budget ($)" data-es="Presupuesto de Mantenimiento ($)">Maintenance Budget ($)</label><div class="input-prefix"><span>$</span><input type="number" id="fc-maint" value="0" onchange="saveFixedCosts()"></div></div>
+      <div class="form-row"><label data-en="Marketing / Promotions ($)" data-es="Mercadeo / Promociones ($)">Marketing / Promotions ($)</label><div class="input-prefix"><span>$</span><input type="number" id="fc-mktg" value="0" onchange="saveFixedCosts()"></div></div>
+      <div class="form-row"><label data-en="Payment Processing ($)" data-es="Procesamiento de Pagos ($)">Payment Processing ($)</label><div class="input-prefix"><span>$</span><input type="number" id="fc-processing" value="0" onchange="saveFixedCosts()"></div></div>
+      <div class="form-row"><label data-en="Other / Misc ($)" data-es="Otros / Misceláneos ($)">Other / Misc ($)</label><div class="input-prefix"><span>$</span><input type="number" id="fc-other" value="0" onchange="saveFixedCosts()"></div></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveFixedCosts()">
+      <span data-en="Save & Recalculate" data-es="Guardar y Recalcular">Save & Recalculate</span>
+    </button>
+  </div>
+
+  <!-- P&L Summary -->
+  <div class="card section-gap">
+    <div class="section-heading">
+      <h3 data-en="Monthly P&L Summary" data-es="Resumen Mensual P&G">Monthly P&L Summary</h3>
+      <button class="btn btn-export btn-sm" onclick="exportCSV()" data-en="Export for CPA (CSV)" data-es="Exportar para CPA (CSV)">Export for CPA (CSV)</button>
+    </div>
+    <div class="cpa-note" data-en="This P&L is formatted for your CPA / Hacienda Puerto Rico submission. The CSV export includes all revenue, cost, and expense categories on a monthly basis. Figures marked (EST) are estimated from machine specs; figures marked (ACT) are from logged shift data." data-es="Este P&G está formateado para su CPA / Hacienda Puerto Rico. El exportado CSV incluye todas las categorías de ingresos, costos y gastos mensualmente. Las cifras marcadas (EST) son estimadas de las especificaciones de máquinas; las marcadas (ACT) son de los registros de turno.">This P&L is formatted for your CPA / Hacienda Puerto Rico submission. The CSV export includes all revenue, cost, and expense categories on a monthly basis. Figures marked (EST) are estimated from machine specs; figures marked (ACT) are from logged shift data.</div>
+
+    <div class="table-wrap">
+      <table id="pl-table">
+        <thead>
+          <tr>
+            <th data-en="Category" data-es="Categoría">Category</th>
+            <th data-en="Item" data-es="Ítem">Item</th>
+            <th data-en="Amount" data-es="Monto">Amount</th>
+            <th data-en="Source" data-es="Fuente">Source</th>
+          </tr>
+        </thead>
+        <tbody id="pl-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Revenue Chart -->
+  <div class="card section-gap">
+    <div class="card-title" data-en="Revenue vs. Costs — Month-to-Date" data-es="Ingresos vs. Costos — Mes Actual">Revenue vs. Costs — Month-to-Date</div>
+    <div class="chart-container" style="height:200px"><canvas id="revCostChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 5: SELLER PAYOFF
+════════════════════════════════════════════ -->
+<div class="view" id="view-payoff">
+  <div class="grid2 section-gap">
+    <div class="card">
+      <div class="section-heading">
+        <h3 data-en="Seller Payoff Timeline" data-es="Cronograma de Pago al Vendedor">Seller Payoff Timeline</h3>
+        <span class="badge badge-blue">$350,000 total</span>
+      </div>
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-date" data-en="2024 — PAID" data-es="2024 — PAGADO">2024 — PAID</div>
+          <div class="tl-amount" style="color:var(--accent2)">$150,000</div>
+          <div class="tl-note" data-en="Initial payments made to seller" data-es="Pagos iniciales realizados al vendedor">Initial payments made to seller</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot active"></div>
+          <div class="tl-date" data-en="MAY 2026 — UPCOMING" data-es="MAYO 2026 — PRÓXIMO">MAY 2026 — UPCOMING</div>
+          <div class="tl-amount" style="color:#D97706">$70,000</div>
+          <div class="tl-note" data-en="Funded from personal savings (confirmed)" data-es="Financiado de ahorros personales (confirmado)">Funded from personal savings (confirmed)</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot future"></div>
+          <div class="tl-date" data-en="2027 — TARGET" data-es="2027 — META">2027 — TARGET</div>
+          <div class="tl-amount">$65,000</div>
+          <div class="tl-note" id="tl-2027-note" data-en="Must be funded by business cashflow" data-es="Debe ser financiado por el flujo de caja del negocio">Must be funded by business cashflow</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot future"></div>
+          <div class="tl-date" data-en="2028 — FINAL PAYOFF" data-es="2028 — PAGO FINAL">2028 — FINAL PAYOFF</div>
+          <div class="tl-amount">$65,000</div>
+          <div class="tl-note" data-en="Property & business fully owned — zero debt" data-es="Propiedad y negocio completamente propios — cero deuda">Property & business fully owned — zero debt</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+        <span style="color:var(--text2)" data-en="Total purchase price" data-es="Precio total de compra">Total purchase price</span><span style="font-weight:600">$350,000</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+        <span style="color:var(--text2)" data-en="Paid to date" data-es="Pagado a la fecha">Paid to date</span><span style="font-weight:600;color:var(--accent2)" id="payoff-paid">$220,000</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:12px">
+        <span style="color:var(--text2)" data-en="Remaining balance" data-es="Balance restante">Remaining balance</span><span style="font-weight:600;color:var(--amber)" id="payoff-remaining">$130,000</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar progress-green" style="width:62.9%"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">62.9% <span data-en="paid toward full ownership" data-es="pagado hacia propiedad total">paid toward full ownership</span></div>
+    </div>
+
+    <!-- ROI & Cashflow Requirements -->
+    <div>
+      <div class="card section-gap">
+        <div class="card-title" data-en="What the Business Must Generate" data-es="Lo Que el Negocio Debe Generar">What the Business Must Generate</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px" data-en="To fund the 2027 and 2028 seller payments purely from business cashflow, here is the minimum monthly profit required." data-es="Para financiar los pagos al vendedor de 2027 y 2028 puramente del flujo de caja del negocio, aquí está la ganancia mínima mensual requerida.">To fund the 2027 and 2028 seller payments purely from business cashflow, here is the minimum monthly profit required.</div>
+        <div class="machine-stat" style="padding:8px 0"><span data-en="Months remaining to 2027 payment" data-es="Meses restantes para pago 2027">Months remaining to 2027 payment</span><span id="months-to-2027" style="font-weight:600">~9 months</span></div>
+        <div class="machine-stat" style="padding:8px 0"><span data-en="Required savings/month for 2027" data-es="Ahorro requerido/mes para 2027">Required savings/month for 2027</span><span style="font-weight:600;color:var(--amber)" id="monthly-for-2027">$7,222</span></div>
+        <div class="machine-stat" style="padding:8px 0"><span data-en="Required savings/month for 2028" data-es="Ahorro requerido/mes para 2028">Required savings/month for 2028</span><span style="font-weight:600;color:var(--amber)" id="monthly-for-2028">$5,417</span></div>
+        <div class="divider"></div>
+        <div class="machine-stat" style="padding:8px 0"><span data-en="Total invested (renovation + purchase)" data-es="Total invertido (renovación + compra)">Total invested (renovation + purchase)</span><span style="font-weight:600">$482,000</span></div>
+        <div class="machine-stat" style="padding:8px 0"><span data-en="Renovation / equipment (sunk)" data-es="Renovación / equipo (hundido)">Renovation / equipment (sunk)</span><span style="font-weight:600;color:var(--red)">$132,000</span></div>
+        <div class="machine-stat" style="padding:8px 0"><span data-en="Real estate (asset — appreciating)" data-es="Bienes raíces (activo — apreciando)">Real estate (asset — appreciating)</span><span style="font-weight:600;color:var(--accent2)">$220,000</span></div>
+        <div class="machine-stat" style="padding:8px 0"><span data-en="Seller balance remaining" data-es="Balance restante al vendedor">Seller balance remaining</span><span style="font-weight:600;color:var(--amber)">$130,000</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-en="ROI Projection" data-es="Proyección de ROI">ROI Projection</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px" data-en="Based on current monthly profit logged. Adjust the monthly profit input to model different scenarios." data-es="Basado en la ganancia mensual actual registrada. Ajuste la entrada de ganancia mensual para modelar diferentes escenarios.">Based on current monthly profit logged. Adjust the monthly profit input to model different scenarios.</div>
+        <div class="form-row"><label data-en="Est. monthly net profit ($)" data-es="Ganancia neta mensual estimada ($)">Est. monthly net profit ($)</label><div class="input-prefix"><span>$</span><input type="number" id="roi-profit" value="3000" oninput="updateROI()"></div></div>
+        <div class="divider"></div>
+        <div class="machine-stat" style="padding:6px 0"><span data-en="Payback on $132k renovation" data-es="Recuperación de $132k en renovación">Payback on $132k renovation</span><span id="roi-reno" style="font-weight:600">—</span></div>
+        <div class="machine-stat" style="padding:6px 0"><span data-en="Full investment payback ($482k)" data-es="Recuperación total ($482k)">Full investment payback ($482k)</span><span id="roi-total" style="font-weight:600">—</span></div>
+        <div class="machine-stat" style="padding:6px 0"><span data-en="Annual ROI (on operating investment)" data-es="ROI anual (sobre inversión operativa)">Annual ROI (on operating investment)</span><span id="roi-annual" style="font-weight:600">—</span></div>
+        <div class="machine-stat" style="padding:6px 0"><span data-en="Net worth at full payoff (est. 2028)" data-es="Patrimonio al pago final (est. 2028)">Net worth at full payoff (est. 2028)</span><span style="font-weight:600;color:var(--accent2)" data-en="$220,000+ property + business value" data-es="$220,000+ propiedad + valor del negocio">$220,000+ property + business value</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 6: SETTINGS
+════════════════════════════════════════════ -->
+<div class="view" id="view-settings">
+  <div class="card section-gap">
+    <div class="section-heading"><h3 data-en="Utility Rates" data-es="Tarifas de Servicios">Utility Rates</h3><span class="badge badge-green">Puerto Rico</span></div>
+    <div class="grid3">
+      <div class="form-row"><label data-en="Electricity — LUMA (¢/kWh)" data-es="Electricidad — LUMA (¢/kWh)">Electricity — LUMA (¢/kWh)</label><input type="number" id="set-elec" value="30" step="0.5" onchange="saveSettings()"></div>
+      <div class="form-row"><label data-en="Propane ($/gallon)" data-es="Propano ($/galón)">Propane ($/gallon)</label><input type="number" id="set-prop" value="3.90" step="0.10" onchange="saveSettings()"></div>
+      <div class="form-row"><label data-en="Water+Sewer — PRASA (¢/gallon)" data-es="Agua+Alcantarillado — PRASA (¢/galón)">Water+Sewer — PRASA (¢/gallon)</label><input type="number" id="set-water" value="3.2" step="0.1" onchange="saveSettings()"></div>
+    </div>
+  </div>
+
+  <div class="card section-gap">
+    <div class="section-heading"><h3 data-en="Vend Prices" data-es="Precios de Venta">Vend Prices</h3></div>
+    <div class="grid4">
+      <div class="form-row"><label data-en="Encore wash ($)" data-es="Lavado Encore ($)">Encore wash ($)</label><div class="input-prefix"><span>$</span><input type="number" id="set-pew" value="3.00" step="0.25" onchange="saveSettings()"></div></div>
+      <div class="form-row"><label data-en="Dexter T-600 wash ($)" data-es="Lavado Dexter T-600 ($)">Dexter T-600 wash ($)</label><div class="input-prefix"><span>$</span><input type="number" id="set-pdw" value="5.00" step="0.25" onchange="saveSettings()"></div></div>
+      <div class="form-row"><label data-en="Encore dry ($)" data-es="Secado Encore ($)">Encore dry ($)</label><div class="input-prefix"><span>$</span><input type="number" id="set-ped" value="2.00" step="0.25" onchange="saveSettings()"></div></div>
+      <div class="form-row"><label data-en="Dexter dry/pocket ($)" data-es="Secado Dexter/bolsillo ($)">Dexter dry/pocket ($)</label><div class="input-prefix"><span>$</span><input type="number" id="set-pdd" value="2.50" step="0.25" onchange="saveSettings()"></div></div>
+    </div>
+    <div class="form-row"><label data-en="Drop-off service ($/lb)" data-es="Servicio drop-off ($/lb)">Drop-off service ($/lb)</label><div class="input-prefix"><span>$</span><input type="number" id="set-pdo" value="1.75" step="0.25" onchange="saveSettings()"></div></div>
+  </div>
+
+  <div class="card section-gap">
+    <div class="section-heading"><h3 data-en="Business Info" data-es="Información del Negocio">Business Info</h3></div>
+    <div class="grid2">
+      <div class="form-row"><label data-en="Business name" data-es="Nombre del negocio">Business name</label><input type="text" id="set-bizname" value="Laundromat 973" onchange="saveSettings()"></div>
+      <div class="form-row"><label data-en="Owner name" data-es="Nombre del dueño">Owner name</label><input type="text" id="set-owner" value="" onchange="saveSettings()"></div>
+      <div class="form-row"><label data-en="Location" data-es="Ubicación">Location</label><input type="text" id="set-location" value="Humacao, Puerto Rico" onchange="saveSettings()"></div>
+      <div class="form-row"><label data-en="CPA / Accountant name" data-es="Nombre del CPA / Contador">CPA / Accountant name</label><input type="text" id="set-cpa" value="" onchange="saveSettings()"></div>
+    </div>
+  </div>
+
+  <div class="card section-gap">
+    <div class="section-heading">
+      <h3 data-en="FasCard Connection" data-es="Conexión FasCard">FasCard Connection</h3>
+      <div class="fascard-status">
+        <div class="fc-dot unknown" id="fc-settings-dot"></div>
+        <span id="fc-settings-status" style="font-size:12px" data-en="Not configured" data-es="No configurado">Not configured</span>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm)" data-en="Enter your FasCard API credentials below. These are stored only in this browser and never shared. Your personal FasCard login is not affected." data-es="Ingrese sus credenciales API de FasCard. Se almacenan solo en este navegador y nunca se comparten. Su acceso personal a FasCard no se ve afectado.">Enter your FasCard API credentials below. These are stored only in this browser and never shared. Your personal FasCard login is not affected.</div>
+    <div class="grid2">
+      <div class="form-row">
+        <label data-en="API Email" data-es="Email API">API Email</label>
+        <input type="email" id="fc-email" value="F2274@fascardapi.com" placeholder="F2274@fascardapi.com">
+      </div>
+      <div class="form-row">
+        <label data-en="API Password" data-es="Contraseña API">API Password</label>
+        <input type="password" id="fc-password" placeholder="Enter generated password" autocomplete="new-password">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="saveFasCardCredentials()" data-en="Save & Connect" data-es="Guardar y Conectar">Save & Connect</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearFasCardCredentials()" data-en="Clear Credentials" data-es="Limpiar Credenciales">Clear Credentials</button>
+    </div>
+    <div id="fc-connect-result" style="margin-top:10px;font-size:12px"></div>
+
+    <div class="divider"></div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:8px" data-en="Machine Mapping — FasCard ID to Dashboard Name" data-es="Mapa de Máquinas — ID FasCard a Nombre del Tablero">Machine Mapping — FasCard ID to Dashboard Name</div>
+    <div class="fc-machine-map">
+      <div class="fc-machine-tag"><span>Encore W1</span><span class="fc-id">ID 1</span></div>
+      <div class="fc-machine-tag"><span>Encore W2</span><span class="fc-id">ID 2</span></div>
+      <div class="fc-machine-tag"><span>Encore W3</span><span class="fc-id">ID 3</span></div>
+      <div class="fc-machine-tag"><span>Encore W4</span><span class="fc-id">ID 4</span></div>
+      <div class="fc-machine-tag"><span>Encore W5</span><span class="fc-id">ID 5</span></div>
+      <div class="fc-machine-tag"><span>Encore W6</span><span class="fc-id">ID 6</span></div>
+      <div class="fc-machine-tag"><span>Encore W7</span><span class="fc-id">ID 7</span></div>
+      <div class="fc-machine-tag"><span>Encore W8</span><span class="fc-id">ID 8</span></div>
+      <div class="fc-machine-tag"><span>Encore W9</span><span class="fc-id">ID 9</span></div>
+      <div class="fc-machine-tag"><span>Encore W10</span><span class="fc-id">ID 10</span></div>
+      <div class="fc-machine-tag"><span>Dexter W1</span><span class="fc-id">ID 22</span></div>
+      <div class="fc-machine-tag"><span>Dexter W2</span><span class="fc-id">ID 23</span></div>
+      <div class="fc-machine-tag"><span>Dexter W3</span><span class="fc-id">ID 24</span></div>
+      <div class="fc-machine-tag"><span>Dexter W4</span><span class="fc-id">ID 25</span></div>
+      <div class="fc-machine-tag"><span>Dexter P1</span><span class="fc-id">ID 26</span></div>
+      <div class="fc-machine-tag"><span>Dexter P2</span><span class="fc-id">ID 27</span></div>
+      <div class="fc-machine-tag offline"><span>Dexter P3 ⚠ OFFLINE</span><span class="fc-id">ID 28</span></div>
+      <div class="fc-machine-tag offline"><span>Dexter P4 ⚠ OFFLINE</span><span class="fc-id">ID 29</span></div>
+      <div class="fc-machine-tag"><span>Encore D1</span><span class="fc-id">ID 31</span></div>
+      <div class="fc-machine-tag"><span>Encore D2</span><span class="fc-id">ID 33</span></div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px" data-en="This mapping is confirmed from your FasCard Setup → Machines screen. Do not modify unless FasCard machine IDs change." data-es="Este mapa está confirmado de su pantalla FasCard Configuración → Máquinas. No modifique a menos que los IDs de FasCard cambien.">This mapping is confirmed from your FasCard Setup → Machines screen. Do not modify unless FasCard machine IDs change.</div>
+  </div>
+
+  <div class="card section-gap">
+    <div class="section-heading"><h3 data-en="Data Management" data-es="Gestión de Datos">Data Management</h3></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-export" onclick="exportCSV()" data-en="Export Full CPA Report (CSV)" data-es="Exportar Reporte CPA Completo (CSV)">Export Full CPA Report (CSV)</button>
+      <button class="btn btn-secondary" onclick="exportJSON()" data-en="Backup Data (JSON)" data-es="Respaldar Datos (JSON)">Backup Data (JSON)</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmReset()" data-en="Reset All Data" data-es="Restablecer Todos los Datos">Reset All Data</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-top:10px" data-en="Data is saved automatically in your browser. Use Export regularly to keep a backup. The CPA CSV is formatted for Hacienda Puerto Rico." data-es="Los datos se guardan automáticamente en su navegador. Use Exportar regularmente para mantener una copia de seguridad. El CSV para CPA está formateado para Hacienda Puerto Rico.">Data is saved automatically in your browser. Use Export regularly to keep a backup. The CPA CSV is formatted for Hacienda Puerto Rico.</div>
+  </div>
+</div>
+
+<script>
+var lang = 'en';
+var cyclesChart = null, utilityChart = null, revCostChart = null;
+
+// ── LANGUAGE ──────────────────────────────────────────────────────────────
+function setLang(l) {
+  lang = l;
+  document.getElementById('btnEN').className = l==='en' ? 'lang-btn active' : 'lang-btn';
+  document.getElementById('btnES').className = l==='es' ? 'lang-btn active' : 'lang-btn';
+  document.querySelectorAll('[data-en]').forEach(function(el) {
+    if (el.tagName==='INPUT'||el.tagName==='TEXTAREA') {
+      el.placeholder = l==='en'?(el.getAttribute('data-en')||''):(el.getAttribute('data-es')||'');
+    } else {
+      el.textContent = l==='en'?(el.getAttribute('data-en')||el.textContent):(el.getAttribute('data-es')||el.textContent);
+    }
+  });
+  document.querySelectorAll('option[data-en]').forEach(function(el){
+    el.textContent = l==='en'?el.getAttribute('data-en'):el.getAttribute('data-es');
+  });
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('view-'+name).classList.add('active');
+  if(name==='machines'){ buildMachineTable(); buildMachineCharts(); buildOffSysHistory(); }
+  if(name==='finances') buildPL();
+}
+
+// ── SETTINGS: read/write independently from UI fields ────────────────────
+// FIX: saveSettings reads ONLY Settings-tab fields.
+//      Fixed costs are saved separately via saveFixedCosts().
+//      This prevents null reads when other tabs are active.
+
+function getSettings() {
+  var s = JSON.parse(localStorage.getItem('lpr_settings')||'{}');
+  return {
+    elec:         parseFloat(s.elec||30),
+    prop:         parseFloat(s.prop||3.90),
+    water:        parseFloat(s.water||3.2),
+    pew:          parseFloat(s.pew||3.00),
+    pdw:          parseFloat(s.pdw||5.00),
+    ped:          parseFloat(s.ped||2.00),
+    pdd:          parseFloat(s.pdd||2.50),
+    pdo:          parseFloat(s.pdo||1.75),
+    fc_rent:      parseFloat(s.fc_rent||0),
+    fc_seller:    parseFloat(s.fc_seller||0),
+    fc_labor:     parseFloat(s.fc_labor||0),
+    fc_ins:       parseFloat(s.fc_ins||0),
+    fc_supplies:  parseFloat(s.fc_supplies||0),
+    fc_maint:     parseFloat(s.fc_maint||0),
+    fc_mktg:      parseFloat(s.fc_mktg||0),
+    fc_processing:parseFloat(s.fc_processing||0),
+    fc_other:     parseFloat(s.fc_other||0),
+    bizname:  s.bizname||'Laundromat 973',
+    owner:    s.owner||'',
+    location: s.location||'Humacao, Puerto Rico',
+    cpa:      s.cpa||''
+  };
+}
+
+function saveSettings() {
+  // Only reads Settings-tab fields — safe to call from any context
+  var existing = JSON.parse(localStorage.getItem('lpr_settings')||'{}');
+  var settingsFields = {
+    elec:     document.getElementById('set-elec'),
+    prop:     document.getElementById('set-prop'),
+    water:    document.getElementById('set-water'),
+    pew:      document.getElementById('set-pew'),
+    pdw:      document.getElementById('set-pdw'),
+    ped:      document.getElementById('set-ped'),
+    pdd:      document.getElementById('set-pdd'),
+    pdo:      document.getElementById('set-pdo'),
+    bizname:  document.getElementById('set-bizname'),
+    owner:    document.getElementById('set-owner'),
+    location: document.getElementById('set-location'),
+    cpa:      document.getElementById('set-cpa')
+  };
+  Object.keys(settingsFields).forEach(function(k){
+    if(settingsFields[k]) existing[k] = settingsFields[k].value;
+  });
+  localStorage.setItem('lpr_settings', JSON.stringify(existing));
+  updateAll();
+  showToast(lang==='en'?'Settings saved.':'Configuración guardada.');
+}
+
+function saveFixedCosts() {
+  // FIX: Separate function for Financials tab fixed costs
+  // Only reads fc- fields which live in the Financials tab
+  var existing = JSON.parse(localStorage.getItem('lpr_settings')||'{}');
+  var fcFields = ['rent','seller','labor','ins','supplies','maint','mktg','processing','other'];
+  fcFields.forEach(function(f){
+    var el = document.getElementById('fc-'+f);
+    if(el) existing['fc_'+f] = el.value;
+  });
+  localStorage.setItem('lpr_settings', JSON.stringify(existing));
+  updateAll();
+  showToast(lang==='en'?'Fixed costs saved.':'Costos fijos guardados.');
+}
+
+function loadSettingsUI() {
+  var s = getSettings();
+  // Settings tab fields
+  var settingsMap = { elec:s.elec, prop:s.prop, water:s.water, pew:s.pew, pdw:s.pdw,
+    ped:s.ped, pdd:s.pdd, pdo:s.pdo, bizname:s.bizname, owner:s.owner, location:s.location, cpa:s.cpa };
+  Object.keys(settingsMap).forEach(function(k){
+    var el = document.getElementById('set-'+k);
+    if(el) el.value = settingsMap[k]||'';
+  });
+  // Financials tab fixed cost fields
+  var fcMap = { rent:s.fc_rent, seller:s.fc_seller, labor:s.fc_labor, ins:s.fc_ins,
+    supplies:s.fc_supplies, maint:s.fc_maint, mktg:s.fc_mktg, processing:s.fc_processing, other:s.fc_other };
+  Object.keys(fcMap).forEach(function(k){
+    var el = document.getElementById('fc-'+k);
+    if(el) el.value = fcMap[k]||0;
+  });
+}
+
+// ── DATA READERS ──────────────────────────────────────────────────────────
+function getTotalCycles() {
+  var data = JSON.parse(localStorage.getItem('lpr_shifts')||'[]');
+  var now = new Date();
+  var thisMonth = now.getFullYear()+'-'+(String(now.getMonth()+1).padStart(2,'0'));
+  var totals = { ew:[0,0,0,0,0,0,0,0,0,0], dw:[0,0,0,0], ed:[0,0,0,0], dd:[0,0,0,0,0,0,0,0] };
+  data.forEach(function(sh){
+    if(!sh['s-date']||!sh['s-date'].startsWith(thisMonth)) return;
+    for(var i=1;i<=10;i++) totals.ew[i-1] += (parseInt(sh['c-ew'+i])||0);
+    for(var i=1;i<=4;i++) totals.dw[i-1] += (parseInt(sh['c-dw'+i])||0);
+    for(var i=1;i<=4;i++) totals.ed[i-1] += (parseInt(sh['c-ed'+i])||0);
+    for(var i=1;i<=8;i++) totals.dd[i-1] += (parseInt(sh['c-dp'+i])||0);
+  });
+  return totals;
+}
+
+function getMonthRevenue() {
+  var data = JSON.parse(localStorage.getItem('lpr_shifts')||'[]');
+  var now = new Date();
+  var thisMonth = now.getFullYear()+'-'+(String(now.getMonth()+1).padStart(2,'0'));
+  var total = 0, days = 0, cashTotal = 0, athTotal = 0;
+  data.forEach(function(sh){
+    if(!sh['s-date']||!sh['s-date'].startsWith(thisMonth)) return;
+    total += (parseFloat(sh['s-rev-self'])||0) + (parseFloat(sh['s-rev-drop'])||0);
+    // Include off-system payments in total revenue
+    (sh.offSys||[]).forEach(function(e){
+      var amt = parseFloat(e.amount)||0;
+      total += amt;
+      if(e.method==='Cash') cashTotal += amt;
+      else athTotal += amt;
+    });
+    days++;
+  });
+  return { total:total, days:days, cash:cashTotal, ath:athTotal };
+}
+
+function calcUtilityCosts(totals, s) {
+  var er = s.elec/100, pr = s.prop/91500, wr = s.water/100;
+  var ewC = totals.ew.reduce(function(a,b){return a+b;},0);
+  var dwC = totals.dw.reduce(function(a,b){return a+b;},0);
+  var edC = totals.ed.reduce(function(a,b){return a+b;},0);
+  var ddC = totals.dd.reduce(function(a,b){return a+b;},0);
+  var elec  = ewC*1.3*er + dwC*1.1*er + edC*0.08*er + ddC*0.9*er;
+  var prop  = edC*(19000*0.75*pr) + ddC*(90000*0.75*pr);
+  var water = ewC*14*wr + dwC*35.1*wr;
+  return { elec:elec, prop:prop, water:water, total:elec+prop+water };
+}
+
+function getFixedCosts(s) {
+  return s.fc_rent+s.fc_seller+s.fc_labor+s.fc_ins+s.fc_supplies+s.fc_maint+s.fc_mktg+s.fc_processing+s.fc_other;
+}
+
+function fmt(n)  { return '$'+(Math.round(n)).toLocaleString(); }
+function fmtD(n) { return '$'+(Math.round(n*100)/100).toFixed(2); }
+
+// ── MAIN UPDATE ───────────────────────────────────────────────────────────
+function updateAll() {
+  var s      = getSettings();
+  var totals = getTotalCycles();
+  var rev    = getMonthRevenue();
+  var util   = calcUtilityCosts(totals, s);
+  var fixed  = getFixedCosts(s);
+  var totalCosts = fixed + util.total;
+  var profit = rev.total - totalCosts;
+
+  // Utility chips
+  document.getElementById('chip-elec').textContent  = '$'+(s.elec/100).toFixed(2)+'/kWh';
+  document.getElementById('chip-prop').textContent  = '$'+s.prop.toFixed(2)+'/gal';
+  document.getElementById('chip-water').textContent = '$'+(s.water/100).toFixed(3)+'/gal';
+
+  // Per-machine spec costs
+  var er = s.elec/100, pr = s.prop/91500, wr = s.water/100;
+  document.getElementById('ms-ew-elec').textContent  = fmtD(1.3*er);
+  document.getElementById('ms-ew-water').textContent = fmtD(14*wr);
+  document.getElementById('ms-ew-total').textContent = fmtD(1.3*er+14*wr);
+  document.getElementById('ms-dw-elec').textContent  = fmtD(1.1*er);
+  document.getElementById('ms-dw-water').textContent = fmtD(35.1*wr);
+  document.getElementById('ms-dw-total').textContent = fmtD(1.1*er+35.1*wr);
+  document.getElementById('ms-ed-prop').textContent  = fmtD(19000*0.75*pr);
+  document.getElementById('ms-ed-elec').textContent  = fmtD(0.08*er);
+  document.getElementById('ms-ed-total').textContent = fmtD(19000*0.75*pr+0.08*er);
+  document.getElementById('ms-dd-prop').textContent  = fmtD(90000*0.75*pr);
+  document.getElementById('ms-dd-elec').textContent  = fmtD(0.9*er);
+  document.getElementById('ms-dd-total').textContent = fmtD(90000*0.75*pr+0.9*er);
+
+  // Monthly utility totals
+  document.getElementById('util-elec-mo').textContent  = fmt(util.elec);
+  document.getElementById('util-prop-mo').textContent  = fmt(util.prop);
+  document.getElementById('util-water-mo').textContent = fmt(util.water);
+
+  // KPI cards
+  document.getElementById('kv-revenue').textContent  = fmt(rev.total);
+  var revSub = rev.days+(lang==='en'?' days logged':' días registrados');
+  if(rev.cash > 0 || rev.ath > 0) {
+    revSub += ' · Cash: '+fmtD(rev.cash)+' · ATH: '+fmtD(rev.ath);
+  }
+  document.getElementById('ks-revenue').textContent  = revSub;
+  document.getElementById('kv-expenses').textContent = fmt(totalCosts);
+  document.getElementById('ks-expenses').textContent = lang==='en'?'fixed + variable':'fijos + variables';
+
+  var profEl = document.getElementById('kpi-profit');
+  document.getElementById('kv-profit').textContent = fmt(profit);
+  profEl.className = 'kpi '+(profit>0?'good':profit<0?'bad':'warn');
+
+  // FIX: break-even uses totalCosts as the target, not just util
+  // Shows $0 correctly when no fixed costs entered yet, not falsely 100%
+  var beTarget = totalCosts;
+  document.getElementById('be-rev-disp').textContent    = fmt(rev.total);
+  document.getElementById('be-cost-disp').textContent   = fmt(totalCosts);
+  document.getElementById('be-target-disp').textContent = fmt(beTarget);
+  var bePct = beTarget > 0 ? Math.min(100,(rev.total/beTarget)*100) : 0;
+  document.getElementById('be-bar').style.width     = bePct.toFixed(1)+'%';
+  document.getElementById('be-bar').className       = 'progress-bar '+(bePct>=100?'progress-green':bePct>=60?'progress-amber':'progress-red');
+  document.getElementById('be-pct-label').textContent = bePct.toFixed(1)+'% '+(lang==='en'?'of break-even covered':'del punto de equilibrio cubierto');
+  var beBadge = document.getElementById('be-badge');
+  if(bePct>=100){ beBadge.className='badge badge-green'; beBadge.textContent=lang==='en'?'ABOVE BREAK-EVEN':'SOBRE PUNTO DE EQUILIBRIO'; }
+  else if(bePct>=60){ beBadge.className='badge badge-amber'; beBadge.textContent=lang==='en'?'APPROACHING':'ACERCÁNDOSE'; }
+  else { beBadge.className='badge badge-red'; beBadge.textContent=lang==='en'?'BELOW BREAK-EVEN':'BAJO PUNTO DE EQUILIBRIO'; }
+
+  updateShiftTable();
+  updateROI();
+  updatePayoffCalc();
+}
+
+function updatePayoffCalc() {
+  var now = new Date();
+  var target2027 = new Date('2027-01-01');
+  var monthsTo2027 = Math.max(1, Math.ceil((target2027-now)/(1000*60*60*24*30.5)));
+  document.getElementById('months-to-2027').textContent     = '~'+monthsTo2027+' '+(lang==='en'?'months':'meses');
+  document.getElementById('monthly-for-2027').textContent   = fmt(65000/monthsTo2027)+'/'+(lang==='en'?'mo':'mes');
+  document.getElementById('monthly-for-2028').textContent   = fmt(65000/12)+'/'+(lang==='en'?'mo':'mes');
+}
+
+function updateROI() {
+  var el = document.getElementById('roi-profit');
+  var monthly = el ? (parseFloat(el.value)||0) : 0;
+  if(monthly<=0){
+    document.getElementById('roi-reno').textContent  = '—';
+    document.getElementById('roi-total').textContent = '—';
+    document.getElementById('roi-annual').textContent= '—';
+    return;
+  }
+  var renoPayback  = Math.ceil(132000/monthly);
+  var totalPayback = Math.ceil(482000/monthly);
+  var annualROI    = ((monthly*12)/132000*100).toFixed(1);
+  document.getElementById('roi-reno').textContent  = renoPayback+(lang==='en'?' months':' meses');
+  document.getElementById('roi-total').textContent = totalPayback+(lang==='en'?' months (~'+Math.round(totalPayback/12)+' yrs)':' meses (~'+Math.round(totalPayback/12)+' años)');
+  document.getElementById('roi-annual').textContent= annualROI+'%';
+}
+
+function updateShiftTable() {
+  var data  = JSON.parse(localStorage.getItem('lpr_shifts')||'[]');
+  var tbody = document.getElementById('shift-log-table');
+  if(data.length===0){
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">'+(lang==='en'?'No shifts logged yet. Use Daily Entry tab.':'No hay turnos registrados. Use la pestaña Entrada Diaria.')+'</td></tr>';
+    return;
+  }
+  var recent = data.slice(-10).reverse();
+  tbody.innerHTML = recent.map(function(sh){
+    var wC=0, dC=0;
+    for(var i=1;i<=10;i++) wC+=(parseInt(sh['c-ew'+i])||0);
+    for(var i=1;i<=4;i++) wC+=(parseInt(sh['c-dw'+i])||0);
+    for(var i=1;i<=4;i++) dC+=(parseInt(sh['c-ed'+i])||0);
+    for(var i=1;i<=8;i++) dC+=(parseInt(sh['c-dp'+i])||0);
+    var rev = (parseFloat(sh['s-rev-self'])||0)+(parseFloat(sh['s-rev-drop'])||0);
+    var hasIssue = sh['s-issues']&&sh['s-issues'].trim().length>0;
+    return '<tr>'
+      +'<td>'+(sh['s-date']||'')+'</td>'
+      +'<td>'+(sh['s-staff']||'')+'</td>'
+      +'<td style="font-weight:500">'+fmt(rev)+'</td>'
+      +'<td>'+wC+' / '+dC+'</td>'
+      +'<td>'+(sh['s-soap']||0)+' oz</td>'
+      +'<td>'+(hasIssue
+        ?'<span class="badge badge-amber">'+(lang==='en'?'Flagged':'Marcado')+'</span>'
+        :'<span class="badge badge-green">OK</span>')+'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+// ── SHIFT SUBMIT ──────────────────────────────────────────────────────────
+function submitShift() {
+  var date  = document.getElementById('s-date').value;
+  var staff = document.getElementById('s-staff').value;
+  if(!date||!staff){
+    showToast(lang==='en'?'Please fill in date and staff name.':'Por favor complete la fecha y nombre del personal.');
+    return;
+  }
+  var entry = { 's-date':date, 's-staff':staff, 's-shift':document.getElementById('s-shift').value };
+  ['s-rev-self','s-rev-drop','s-drop-lbs','s-discount','s-soap','s-softener','s-bags','s-issues','s-complaints','s-notes']
+    .forEach(function(f){ entry[f]=document.getElementById(f).value; });
+  for(var i=1;i<=10;i++) { var ewEl=document.getElementById('c-ew'+i); entry['c-ew'+i]=ewEl?ewEl.value:0; }
+  for(var i=1;i<=4;i++) entry['c-dw'+i]=document.getElementById('c-dw'+i).value;
+  for(var i=1;i<=4;i++) entry['c-ed'+i]=document.getElementById('c-ed'+i).value;
+  for(var i=1;i<=8;i++) entry['c-dp'+i]=document.getElementById('c-dp'+i).value;
+
+  var data = JSON.parse(localStorage.getItem('lpr_shifts')||'[]');
+  data.push(entry);
+  localStorage.setItem('lpr_shifts', JSON.stringify(data));
+
+  showToast(lang==='en'?'Shift submitted successfully!':'¡Turno enviado exitosamente!');
+  // Clear attendant input fields
+  document.querySelectorAll('#view-attendant input[type=number],#view-attendant textarea').forEach(function(el){ el.value=''; });
+  // Reset date
+  document.getElementById('s-date').value = new Date().toISOString().slice(0,10);
+  updateAll();
+}
+
+// ── MACHINE TRACKER ───────────────────────────────────────────────────────
+function buildMachineTable() {
+  var s = getSettings();
+  var totals = getTotalCycles();
+  var er=s.elec/100, pr=s.prop/91500, wr=s.water/100;
+  var rows=[];
+
+  for(var i=0;i<10;i++){
+    var c=totals.ew[i]; var ec=c*1.3*er; var wc=c*14*wr; var tot=ec+wc;
+    rows.push(['Encore W'+(i+1), lang==='en'?'Washer':'Lavadora', c, fmtD(ec), '—', fmtD(wc), fmtD(tot), c>0?fmtD(tot/c):'—']);
+  }
+  for(var i=0;i<4;i++){
+    var c=totals.dw[i]; var ec=c*1.1*er; var wc=c*35.1*wr; var tot=ec+wc;
+    rows.push(['Dexter W'+(i+1), lang==='en'?'Washer':'Lavadora', c, fmtD(ec), '—', fmtD(wc), fmtD(tot), c>0?fmtD(tot/c):'—']);
+  }
+  for(var i=0;i<4;i++){
+    var c=totals.ed[i]; var pc=c*(19000*0.75*pr); var ec=c*0.08*er; var tot=pc+ec;
+    rows.push(['Encore D'+(i+1), lang==='en'?'Dryer':'Secadora', c, fmtD(ec), fmtD(pc), '—', fmtD(tot), c>0?fmtD(tot/c):'—']);
+  }
+  for(var i=0;i<8;i++){
+    var c=totals.dd[i]; var pc=c*(90000*0.75*pr); var ec=c*0.9*er; var tot=pc+ec;
+    rows.push(['Dexter P'+(i+1), lang==='en'?'Dryer Pocket':'Bolsillo Secadora', c, fmtD(ec), fmtD(pc), '—', fmtD(tot), c>0?fmtD(tot/c):'—']);
+  }
+
+  var tbody = document.getElementById('machine-cost-body');
+  if(tbody) tbody.innerHTML = rows.map(function(r){
+    return '<tr><td><strong>'+r[0]+'</strong></td><td>'+r[1]+'</td><td>'+r[2]+'</td>'
+      +'<td>'+r[3]+'</td><td>'+r[4]+'</td><td>'+r[5]+'</td>'
+      +'<td style="font-weight:600">'+r[6]+'</td><td>'+r[7]+'</td></tr>';
+  }).join('');
+}
+
+function buildMachineCharts() {
+  var s=getSettings(), totals=getTotalCycles(), util=calcUtilityCosts(totals,s);
+  var isDark=matchMedia('(prefers-color-scheme: dark)').matches;
+  var gc=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)';
+  var tc=isDark?'#9c9a92':'#73726c';
+
+  var ewT=totals.ew.reduce(function(a,b){return a+b;},0);
+  var dwT=totals.dw.reduce(function(a,b){return a+b;},0);
+  var edT=totals.ed.reduce(function(a,b){return a+b;},0);
+  var ddT=totals.dd.reduce(function(a,b){return a+b;},0);
+
+  var cEl=document.getElementById('cyclesChart');
+  var uEl=document.getElementById('utilityChart');
+  if(!cEl||!uEl) return;
+
+  if(cyclesChart) cyclesChart.destroy();
+  cyclesChart = new Chart(cEl,{
+    type:'bar',
+    data:{
+      labels:['Encore Washers','Dexter T-600','Encore Dryers','Dexter Pockets'],
+      datasets:[{data:[ewT,dwT,edT,ddT],backgroundColor:['#1B4332','#2D6A4F','#92400E','#B45309'],borderRadius:4}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:11}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:11}}}}}
+  });
+
+  if(utilityChart) utilityChart.destroy();
+  utilityChart = new Chart(uEl,{
+    type:'doughnut',
+    data:{
+      labels:[lang==='en'?'Electricity':'Electricidad',lang==='en'?'Propane':'Propano',lang==='en'?'Water':'Agua'],
+      datasets:[{data:[util.elec.toFixed(2),util.prop.toFixed(2),util.water.toFixed(2)],
+        backgroundColor:['#1B4332','#92400E','#1E3A5F'],borderWidth:0}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}
+  });
+}
+
+// ── P&L ───────────────────────────────────────────────────────────────────
+function buildPL() {
+  var s=getSettings(), totals=getTotalCycles(), rev=getMonthRevenue();
+  var util=calcUtilityCosts(totals,s);
+  var maint=JSON.parse(localStorage.getItem('lpr_maint')||'[]');
+  var maintCost=maint.reduce(function(a,b){return a+(parseFloat(b.cost)||0);},0);
+
+  var gross=rev.total;
+  var cogs=util.total;
+  var gp=gross-cogs;
+  var opex=s.fc_rent+s.fc_seller+s.fc_labor+s.fc_ins+s.fc_supplies+s.fc_mktg+s.fc_processing+s.fc_other+s.fc_maint+maintCost;
+  var ebitda=gp-opex;
+
+  var offSysMTD = getOffSysMonthTotals();
+  var rows=[
+    ['REVENUE','Self-service revenue (FasCard/Card)',fmt(rev.total - (rev.cash||0) - (rev.ath||0)),'ACT'],
+    ['REVENUE','Cash transactions','$'+(rev.cash||0).toFixed(2),'ACT'],
+    ['REVENUE','ATH Móvil transactions','$'+(rev.ath||0).toFixed(2),'ACT'],
+    ['','GROSS REVENUE',fmt(gross),''],
+    ['COST OF REVENUE','Electricity (LUMA)',fmt(util.elec),'EST'],
+    ['COST OF REVENUE','Propane — dryers',fmt(util.prop),'EST'],
+    ['COST OF REVENUE','Water + Sewer (PRASA)',fmt(util.water),'EST'],
+    ['','GROSS PROFIT',fmt(gp),''],
+    ['OPERATING EXPENSES','Rent / Lease',fmt(s.fc_rent),'ACT'],
+    ['OPERATING EXPENSES','Seller financing payment',fmt(s.fc_seller),'ACT'],
+    ['OPERATING EXPENSES','Labor / Wages',fmt(s.fc_labor),'ACT'],
+    ['OPERATING EXPENSES','Insurance',fmt(s.fc_ins),'ACT'],
+    ['OPERATING EXPENSES','Supplies & Detergent',fmt(s.fc_supplies),'ACT'],
+    ['OPERATING EXPENSES','Maintenance & Repairs',fmt(s.fc_maint+maintCost),'ACT'],
+    ['OPERATING EXPENSES','Marketing & Promotions',fmt(s.fc_mktg),'ACT'],
+    ['OPERATING EXPENSES','Payment Processing',fmt(s.fc_processing),'ACT'],
+    ['OPERATING EXPENSES','Other / Miscellaneous',fmt(s.fc_other),'ACT'],
+    ['','NET OPERATING INCOME (EBITDA)',fmt(ebitda),''],
+  ];
+
+  var tbody=document.getElementById('pl-body');
+  if(tbody) tbody.innerHTML=rows.map(function(r){
+    var isSummary=r[1].startsWith('GROSS')||r[1].startsWith('NET');
+    var badge=r[3]==='ACT'?'<span class="badge badge-green">ACT</span>'
+              :r[3]==='EST'?'<span class="badge badge-amber">EST</span>':'';
+    return '<tr style="'+(isSummary?'font-weight:600;background:var(--bg)':'')
+      +'"><td style="color:var(--text3);font-size:11px">'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+badge+'</td></tr>';
+  }).join('');
+
+  var isDark=matchMedia('(prefers-color-scheme: dark)').matches;
+  var gc=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)';
+  var tc=isDark?'#9c9a92':'#73726c';
+  var rcEl=document.getElementById('revCostChart');
+  if(!rcEl) return;
+  if(revCostChart) revCostChart.destroy();
+  revCostChart=new Chart(rcEl,{
+    type:'bar',
+    data:{
+      labels:['Gross Revenue','Cost of Revenue','Gross Profit','Operating Expenses','Net Income'],
+      datasets:[{data:[gross,cogs,gp,opex,ebitda],
+        backgroundColor:['#1B4332','#92400E','#2D6A4F','#1E3A5F',ebitda>=0?'#1B4332':'#991B1B'],borderRadius:4}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxRotation:0}},
+        y:{grid:{color:gc},ticks:{color:tc,font:{size:11},callback:function(v){return '$'+Math.round(v/1000)+'k';}}}}}
+  });
+}
+
+// ── MAINTENANCE ───────────────────────────────────────────────────────────
+function showAddMaintenance() {
+  var f=document.getElementById('maint-form');
+  f.style.display=f.style.display==='none'?'block':'none';
+}
+
+function saveMaintenance() {
+  var entry={
+    date:  document.getElementById('m-date').value,
+    machine:document.getElementById('m-machine').value,
+    desc:  document.getElementById('m-desc').value,
+    cost:  document.getElementById('m-cost').value
+  };
+  if(!entry.date||!entry.machine){
+    showToast(lang==='en'?'Please fill in date and machine.':'Por favor complete la fecha y máquina.');
+    return;
+  }
+  var data=JSON.parse(localStorage.getItem('lpr_maint')||'[]');
+  data.push(entry);
+  localStorage.setItem('lpr_maint',JSON.stringify(data));
+  document.getElementById('maint-form').style.display='none';
+  ['m-date','m-machine','m-desc','m-cost'].forEach(function(id){ document.getElementById(id).value=''; });
+  updateMaintTable();
+  updateAll();
+  showToast(lang==='en'?'Maintenance entry saved.':'Entrada guardada.');
+}
+
+function updateMaintTable() {
+  var data=JSON.parse(localStorage.getItem('lpr_maint')||'[]');
+  var tbody=document.getElementById('maint-table');
+  if(!tbody) return;
+  if(data.length===0){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">'
+      +(lang==='en'?'No maintenance records yet.':'No hay registros de mantenimiento aún.')+'</td></tr>';
+    return;
+  }
+  tbody.innerHTML=data.slice(-20).reverse().map(function(r){
+    return '<tr><td>'+r.date+'</td><td>'+r.machine+'</td><td>'+(r.desc||'')+'</td>'
+      +'<td style="font-weight:600">$'+parseFloat(r.cost||0).toFixed(2)+'</td></tr>';
+  }).join('');
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────
+function exportCSV() {
+  var s=getSettings();
+  var shifts=JSON.parse(localStorage.getItem('lpr_shifts')||'[]');
+  var maint=JSON.parse(localStorage.getItem('lpr_maint')||'[]');
+  var now=new Date();
+  var rows=[
+    ['Laundromat 973 — Financial Report for CPA / Hacienda Puerto Rico'],
+    ['Business:',s.bizname,'Owner:',s.owner,'Location:',s.location,'CPA:',s.cpa],
+    ['Generated:',now.toLocaleDateString()],
+    [''],
+    ['=== SHIFT REVENUE LOG ==='],
+    ['Date','Staff','Shift','Self-Service Revenue','Drop-Off Revenue','Cash Revenue','ATH Movil Revenue',
+     'Drop-Off Lbs','Discounts','Soap Used (oz)','Softener (oz)','Bags Used',
+     'Encore W Cycles','Dexter W Cycles','Encore D Cycles','Dexter Pocket Cycles',
+     'Issues','Complaints','Notes']
+  ];
+  shifts.forEach(function(sh){
+    var ewC=0,dwC=0,edC=0,ddC=0;
+    for(var i=1;i<=10;i++) ewC+=(parseInt(sh['c-ew'+i])||0);
+    for(var i=1;i<=4;i++) dwC+=(parseInt(sh['c-dw'+i])||0);
+    for(var i=1;i<=4;i++) edC+=(parseInt(sh['c-ed'+i])||0);
+    for(var i=1;i<=8;i++) ddC+=(parseInt(sh['c-dp'+i])||0);
+    var cashT=(sh.offSys||[]).filter(function(e){return e.method==='Cash';}).reduce(function(a,e){return a+(parseFloat(e.amount)||0);},0);
+    var athT=(sh.offSys||[]).filter(function(e){return e.method!=='Cash';}).reduce(function(a,e){return a+(parseFloat(e.amount)||0);},0);
+    rows.push([sh['s-date'],sh['s-staff'],sh['s-shift'],
+      sh['s-rev-self']||0,sh['s-rev-drop']||0,cashT.toFixed(2),athT.toFixed(2),
+      sh['s-drop-lbs']||0,sh['s-discount']||0,
+      sh['s-soap']||0,sh['s-softener']||0,sh['s-bags']||0,
+      ewC,dwC,edC,ddC,
+      (sh['s-issues']||'').replace(/,/g,';'),
+      (sh['s-complaints']||'').replace(/,/g,';'),
+      (sh['s-notes']||'').replace(/,/g,';')]);
+  });
+  // Off-system transaction detail
+  rows.push([''],
+    ['=== OFF-SYSTEM TRANSACTIONS (CASH & ATH MOVIL) ==='],
+    ['Date','Staff','Method','Service','Machine','Amount']);
+  shifts.forEach(function(sh){
+    (sh.offSys||[]).forEach(function(e){
+      rows.push([sh['s-date'],sh['s-staff']||'—',e.method,e.service,e.machine,parseFloat(e.amount||0).toFixed(2)]);
+    });
+  });
+  rows.push([''],['=== MAINTENANCE & REPAIR LOG ==='],['Date','Machine','Description','Cost']);
+  maint.forEach(function(m){ rows.push([m.date,m.machine,(m.desc||'').replace(/,/g,';'),m.cost||0]); });
+  rows.push([''],['=== UTILITY RATES USED ==='],
+    ['Electricity (¢/kWh)',s.elec,'Propane ($/gal)',s.prop,'Water+Sewer (¢/gal)',s.water]);
+  rows.push([''],['=== SELLER FINANCING SCHEDULE ==='],
+    ['Total Purchase','$350,000','Interest','None (0%)'],
+    ['Paid to Date','$150,000'],['May 2026 Payment (personal savings)','$70,000'],
+    ['2027 Target','$65,000'],['2028 Final Payment','$65,000'],['Remaining after May 2026','$130,000']);
+
+  var csv=rows.map(function(r){
+    return r.map(function(c){ return '"'+(c||'').toString().replace(/"/g,'""')+'"'; }).join(',');
+  }).join('\n');
+  var blob=new Blob([csv],{type:'text/csv'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='L973_CPA_Report_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+'.csv';
+  a.click();
+  showToast(lang==='en'?'CPA report exported!':'¡Reporte CPA exportado!');
+}
+
+function exportJSON() {
+  var backup={
+    shifts:JSON.parse(localStorage.getItem('lpr_shifts')||'[]'),
+    maint: JSON.parse(localStorage.getItem('lpr_maint')||'[]'),
+    settings:JSON.parse(localStorage.getItem('lpr_settings')||'{}')
+  };
+  var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='L973_Backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  showToast(lang==='en'?'Data backup exported!':'¡Respaldo exportado!');
+}
+
+function confirmReset() {
+  if(confirm(lang==='en'?'Delete ALL data permanently?':'¿Eliminar TODOS los datos permanentemente?')){
+    localStorage.removeItem('lpr_shifts');
+    localStorage.removeItem('lpr_maint');
+    localStorage.removeItem('lpr_settings');
+    location.reload();
+  }
+}
+
+// ── TOAST & DATE ─────────────────────────────────────────────────────────
+function showToast(msg) {
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },3000);
+}
+
+function updateDate() {
+  var d=new Date();
+  document.getElementById('navDate').textContent=d.toLocaleDateString(
+    lang==='en'?'en-US':'es-PR',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+}
+
+
+// ── FASCARD MACHINE MAP ───────────────────────────────────────────────────
+// Confirmed from FasCard Setup → Machines screen (F2274 LAUNDROMAT 973)
+var FC_MACHINE_MAP = {
+  1:  { label:'Encore W1',  type:'washer_encore',  cycleKey:'c-ew1'  },
+  2:  { label:'Encore W2',  type:'washer_encore',  cycleKey:'c-ew2'  },
+  3:  { label:'Encore W3',  type:'washer_encore',  cycleKey:'c-ew3'  },
+  4:  { label:'Encore W4',  type:'washer_encore',  cycleKey:'c-ew4'  },
+  5:  { label:'Encore W5',  type:'washer_encore',  cycleKey:'c-ew5'  },
+  6:  { label:'Encore W6',  type:'washer_encore',  cycleKey:'c-ew6'  },
+  7:  { label:'Encore W7',  type:'washer_encore',  cycleKey:'c-ew7'  },
+  8:  { label:'Encore W8',  type:'washer_encore',  cycleKey:'c-ew8'  },
+  9:  { label:'Encore W9',  type:'washer_encore',  cycleKey:'c-ew9'  },
+  10: { label:'Encore W10', type:'washer_encore',  cycleKey:'c-ew10' },
+  22: { label:'Dexter W1',  type:'washer_dexter',  cycleKey:'c-dw1'  },
+  23: { label:'Dexter W2',  type:'washer_dexter',  cycleKey:'c-dw2'  },
+  24: { label:'Dexter W3',  type:'washer_dexter',  cycleKey:'c-dw3'  },
+  25: { label:'Dexter W4',  type:'washer_dexter',  cycleKey:'c-dw4'  },
+  26: { label:'Dexter P1',  type:'dryer_dexter',   cycleKey:'c-dp1'  },
+  27: { label:'Dexter P2',  type:'dryer_dexter',   cycleKey:'c-dp2'  },
+  28: { label:'Dexter P3',  type:'dryer_dexter',   cycleKey:'c-dp3',  offline:true },
+  29: { label:'Dexter P4',  type:'dryer_dexter',   cycleKey:'c-dp4',  offline:true },
+  31: { label:'Encore D1',  type:'dryer_encore',   cycleKey:'c-ed1'  },
+  33: { label:'Encore D2',  type:'dryer_encore',   cycleKey:'c-ed2'  }
+};
+
+var FC_OFFLINE_IDS = [28, 29];
+
+// ── FASCARD CREDENTIAL MANAGEMENT ────────────────────────────────────────
+function saveFasCardCredentials() {
+  var email = document.getElementById('fc-email').value.trim();
+  var password = document.getElementById('fc-password').value;
+  if(!email || !password) {
+    showFcResult('error', lang==='en'?'Please enter both email and password.':'Por favor ingrese email y contraseña.');
+    return;
+  }
+  // Store credentials in localStorage (browser-only, never transmitted)
+  var creds = { email: email, password: password };
+  localStorage.setItem('lpr_fc_creds', JSON.stringify(creds));
+  showFcResult('testing', lang==='en'?'Connecting to FasCard...':'Conectando a FasCard...');
+  testFasCardConnection(email, password);
+}
+
+function clearFasCardCredentials() {
+  if(confirm(lang==='en'?'Clear FasCard credentials?':'¿Limpiar credenciales de FasCard?')) {
+    localStorage.removeItem('lpr_fc_creds');
+    localStorage.removeItem('lpr_fc_token');
+    document.getElementById('fc-password').value = '';
+    updateFcStatusUI('unknown', lang==='en'?'Credentials cleared.':'Credenciales eliminadas.');
+    showFcResult('', '');
+  }
+}
+
+function getFcCredentials() {
+  try { return JSON.parse(localStorage.getItem('lpr_fc_creds')||'null'); }
+  catch(e) { return null; }
+}
+
+function showFcResult(type, msg) {
+  var el = document.getElementById('fc-connect-result');
+  if(!el || !msg) { if(el) el.innerHTML=''; return; }
+  var colors = { error:'var(--red)', success:'var(--accent2)', testing:'var(--amber)' };
+  el.innerHTML = '<span style="color:'+(colors[type]||'var(--text2)')+'">'+msg+'</span>';
+}
+
+// ── FASCARD API AUTHENTICATION ────────────────────────────────────────────
+function getFcBaseUrl() { return '/api/fascard'; }
+
+function fasCardAuthToken(email, password, callback) {
+  var url = getFcBaseUrl() + '?action=auth';
+  var body = JSON.stringify({ email: email, password: password });
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body
+  })
+  .then(function(r) {
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
+  .then(function(data) {
+    var token = data.TokenValue || data.token || data.Token || (typeof data === 'string' ? data : null);
+    if(token) {
+      localStorage.setItem('lpr_fc_token', JSON.stringify({ token: token, ts: Date.now() }));
+      callback(null, token);
+    } else {
+      callback('No token in response: ' + JSON.stringify(data), null);
+    }
+  })
+  .catch(function(e) { callback(e.message, null); });
+}
+
+function getStoredToken() {
+  try {
+    var t = JSON.parse(localStorage.getItem('lpr_fc_token')||'null');
+    if(!t) return null;
+    // Token expires after 60 minutes — re-auth if older
+    if(Date.now() - t.ts > 55 * 60 * 1000) return null;
+    return t.token;
+  } catch(e) { return null; }
+}
+
+function withToken(callback) {
+  var stored = getStoredToken();
+  if(stored) { callback(null, stored); return; }
+  var creds = getFcCredentials();
+  if(!creds) { callback('No credentials saved. Configure FasCard in Settings.', null); return; }
+  fasCardAuthToken(creds.email, creds.password, callback);
+}
+
+function testFasCardConnection(email, password) {
+  fasCardAuthToken(email, password, function(err, token) {
+    if(err) {
+      updateFcStatusUI('disconnected', lang==='en'?'Connection failed: '+err:'Error de conexión: '+err);
+      showFcResult('error', lang==='en'?'Could not connect. Check credentials and try again.':'No se pudo conectar. Verifique las credenciales.');
+    } else {
+      updateFcStatusUI('connected', lang==='en'?'Connected to FasCard':'Conectado a FasCard');
+      showFcResult('success', lang==='en'?'Connected successfully! Ready to sync.':'¡Conectado exitosamente! Listo para sincronizar.');
+      showToast(lang==='en'?'FasCard connected!':'¡FasCard conectado!');
+    }
+  });
+}
+
+function updateFcStatusUI(status, message) {
+  var dotIds = ['fc-status-dot', 'fc-settings-dot'];
+  var textId = 'fc-status-text';
+  var settingsText = 'fc-settings-status';
+  var panel = document.getElementById('fc-sync-panel');
+  dotIds.forEach(function(id) {
+    var el = document.getElementById(id);
+    if(el) { el.className = 'fc-dot ' + status; }
+  });
+  var t1 = document.getElementById(textId);
+  if(t1) t1.textContent = message;
+  var t2 = document.getElementById(settingsText);
+  if(t2) t2.textContent = message;
+  if(panel) {
+    panel.className = 'fc-sync-panel section-gap ' + (status === 'connected' ? '' : status === 'error' ? 'error' : 'disconnected');
+  }
+}
+
+// ── FASCARD SYNC ENGINE ───────────────────────────────────────────────────
+var fcSyncLog = [];
+
+function logSync(msg) {
+  var ts = new Date().toLocaleTimeString();
+  fcSyncLog.unshift('['+ts+'] ' + msg);
+  if(fcSyncLog.length > 20) fcSyncLog = fcSyncLog.slice(0,20);
+  var logEl = document.getElementById('fc-sync-log');
+  if(logEl) {
+    logEl.style.display = 'block';
+    logEl.innerHTML = fcSyncLog.map(function(l){
+      return '<div class="fc-sync-log-entry">'+l+'</div>';
+    }).join('');
+  }
+}
+
+function fasCardSync() {
+  var btn = document.getElementById('fc-sync-btn');
+  if(btn) btn.disabled = true;
+  updateFcStatusUI('syncing', lang==='en'?'Syncing...':'Sincronizando...');
+  logSync(lang==='en'?'Starting FasCard sync...':'Iniciando sincronización FasCard...');
+
+  withToken(function(err, token) {
+    if(err) {
+      updateFcStatusUI('disconnected', lang==='en'?'Sync failed — not connected':'Sincronización fallida — no conectado');
+      logSync('ERROR: ' + err);
+      if(btn) btn.disabled = false;
+      showToast(lang==='en'?'FasCard not connected. Configure in Settings.':'FasCard no conectado. Configure en Ajustes.');
+      return;
+    }
+
+    // Get today's date range in ISO format
+    var now = new Date();
+    var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    var minDT = startOfDay.toISOString().slice(0,19);
+    var maxDT = now.toISOString().slice(0,19);
+
+    logSync('Fetching machine activity for ' + now.toLocaleDateString() + '...');
+
+    // Pull machine history for all 20 machines
+    var machineIds = Object.keys(FC_MACHINE_MAP).map(Number);
+    var results = {};
+    var pending = machineIds.length;
+    var errors = 0;
+
+    machineIds.forEach(function(machId) {
+      var machine = FC_MACHINE_MAP[machId];
+      if(machine.offline) {
+        results[machId] = { cycles: 0, revenue: 0, offline: true };
+        pending--;
+        if(pending === 0) processSyncResults(results, token, minDT, maxDT, btn);
+        return;
+      }
+      var url = getFcBaseUrl() + '?action=machine_history&machId=' + machId + '&minDT=' + encodeURIComponent(minDT) + '&maxDT=' + encodeURIComponent(maxDT) + '&limit=200';
+      fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function(r) {
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function(data) {
+        var records = Array.isArray(data) ? data : (data.Items || data.Records || data.Data || []);
+        var cycles = 0, revenue = 0;
+        records.forEach(function(rec) {
+          // Count "Started machine" transactions as cycles
+          var ttype = (rec.TransType || rec.TransactionType || rec.Type || '').toLowerCase();
+          if(ttype.indexOf('start') !== -1 || ttype === '1' || ttype === 'vend') {
+            cycles++;
+            revenue += parseFloat(rec.CreditCard || rec.Amount || rec.Spend || rec.Total || 0);
+          }
+        });
+        results[machId] = { cycles: cycles, revenue: revenue, offline: false };
+        pending--;
+        if(pending === 0) processSyncResults(results, token, minDT, maxDT, btn);
+      })
+      .catch(function(e) {
+        errors++;
+        results[machId] = { cycles: 0, revenue: 0, error: e.message };
+        pending--;
+        if(pending === 0) processSyncResults(results, token, minDT, maxDT, btn);
+      });
+    });
+  });
+}
+
+function processSyncResults(results, token, minDT, maxDT, btn) {
+  var totalCycles = 0, totalRevenue = 0, machineCount = 0, errorCount = 0;
+
+  // Apply cycle counts to daily entry form fields
+  Object.keys(results).forEach(function(machId) {
+    var r = results[machId];
+    var machine = FC_MACHINE_MAP[parseInt(machId)];
+    if(!machine) return;
+    var inputEl = document.getElementById(machine.cycleKey);
+    if(inputEl && !r.offline) {
+      inputEl.value = r.cycles;
+      if(r.cycles > 0) { inputEl.style.background = '#D1FAE5'; machineCount++; }
+    }
+    if(!r.offline && !r.error) {
+      totalCycles += (r.cycles || 0);
+      totalRevenue += (r.revenue || 0);
+    }
+    if(r.error) errorCount++;
+  });
+
+  // Auto-populate self-service revenue field
+  var revEl = document.getElementById('s-rev-self');
+  if(revEl && totalRevenue > 0) {
+    revEl.value = totalRevenue.toFixed(2);
+    revEl.style.background = '#D1FAE5';
+  }
+
+  // Update last sync time
+  var now = new Date();
+  localStorage.setItem('lpr_fc_last_sync', now.toISOString());
+  var lastSyncEl = document.getElementById('fc-last-sync');
+  if(lastSyncEl) lastSyncEl.textContent = (lang==='en'?'Last sync: ':'Última sincronización: ') + now.toLocaleTimeString();
+
+  // Show offline alert
+  var offlineAlert = document.getElementById('fc-offline-alert');
+  if(offlineAlert) offlineAlert.style.display = 'flex';
+
+  updateFcStatusUI('connected', lang==='en'?'Connected — sync complete':'Conectado — sincronización completa');
+  logSync('Sync complete: ' + totalCycles + ' cycles, $' + totalRevenue.toFixed(2) + ' revenue, ' + machineCount + ' active machines' + (errorCount > 0 ? ', ' + errorCount + ' errors' : ''));
+
+  if(btn) btn.disabled = false;
+  showToast(lang==='en'?'FasCard sync complete! '+totalCycles+' cycles loaded.':'¡Sincronización completa! '+totalCycles+' ciclos cargados.');
+}
+
+// ── CHECK CONNECTION STATUS ON LOAD ──────────────────────────────────────
+function checkFcConnectionStatus() {
+  var creds = getFcCredentials();
+  if(!creds) {
+    updateFcStatusUI('unknown', lang==='en'?'Not connected — configure in Settings':'No conectado — configurar en Ajustes');
+    return;
+  }
+  var stored = getStoredToken();
+  if(stored) {
+    updateFcStatusUI('connected', lang==='en'?'Connected to FasCard':'Conectado a FasCard');
+    // Show offline alert since we know machines 28/29 are offline
+    var offlineAlert = document.getElementById('fc-offline-alert');
+    if(offlineAlert) offlineAlert.style.display = 'flex';
+  } else {
+    updateFcStatusUI('unknown', lang==='en'?'Credentials saved — tap Sync to connect':'Credenciales guardadas — sincronice para conectar');
+  }
+  // Restore last sync time
+  var lastSync = localStorage.getItem('lpr_fc_last_sync');
+  if(lastSync) {
+    var lastSyncEl = document.getElementById('fc-last-sync');
+    if(lastSyncEl) {
+      lastSyncEl.textContent = (lang==='en'?'Last sync: ':'Última sincronización: ') + new Date(lastSync).toLocaleString();
+    }
+  }
+  // Pre-fill email if saved
+  var emailEl = document.getElementById('fc-email');
+  if(emailEl && creds.email) emailEl.value = creds.email;
+}
+
+// ── OFF-SYSTEM PAYMENTS ─────────────────────────────────────────────────
+// In-memory list for the current shift session (cleared on submit)
+var offSysSession = [];
+
+function addOffSysTransaction() {
+  var amount = parseFloat(document.getElementById('os-amount').value);
+  if(!amount || amount <= 0) {
+    showToast(lang==='en'?'Enter a valid amount.':' Ingrese un monto válido.');
+    return;
+  }
+  var method  = document.getElementById('os-method').value;
+  var service = document.getElementById('os-service').value;
+  var machine = document.getElementById('os-machine').value;
+  var entry = { id: Date.now(), amount: amount, method: method, service: service, machine: machine };
+  offSysSession.push(entry);
+  document.getElementById('os-amount').value = '';
+  renderOffSysSession();
+  updateOffSysTotals();
+}
+
+function deleteOffSysTransaction(id) {
+  offSysSession = offSysSession.filter(function(e){ return e.id !== id; });
+  renderOffSysSession();
+  updateOffSysTotals();
+}
+
+function renderOffSysSession() {
+  var log = document.getElementById('offsys-log');
+  if(!log) return;
+  if(offSysSession.length === 0) {
+    log.innerHTML = '<div class="offsys-empty" data-en="No transactions yet." data-es="Sin transacciones aún.">'+(lang==='en'?'No transactions yet.':' Sin transacciones aún.')+'</div>';
+    return;
+  }
+  log.innerHTML = offSysSession.slice().reverse().map(function(e){
+    var methodClass = e.method === 'Cash' ? 'offsys-method-cash' : 'offsys-method-ath';
+    var methodLabel = e.method === 'Cash' ? (lang==='en'?'CASH':'EFECTIVO') : 'ATH MÓVIL';
+    return '<div class="offsys-entry">'+
+      '<div class="offsys-entry-left">'+
+        '<div><span class="offsys-entry-method '+methodClass+'">'+ methodLabel +'</span></div>'+
+        '<div class="offsys-entry-meta">'+e.service+' · '+e.machine+'</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<span class="offsys-entry-amount">$'+e.amount.toFixed(2)+'</span>'+
+        '<button class="offsys-entry-del" onclick="deleteOffSysTransaction('+e.id+')" title="Remove">×</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function updateOffSysTotals() {
+  var cashTotal = offSysSession.filter(function(e){ return e.method==='Cash'; })
+    .reduce(function(a,e){ return a+e.amount; },0);
+  var athTotal  = offSysSession.filter(function(e){ return e.method==='ATH Movil'; })
+    .reduce(function(a,e){ return a+e.amount; },0);
+  var cashEl = document.getElementById('offsys-cash-total');
+  var athEl  = document.getElementById('offsys-ath-total');
+  if(cashEl) cashEl.textContent = '$'+cashTotal.toFixed(2);
+  if(athEl)  athEl.textContent  = '$'+athTotal.toFixed(2);
+}
+
+function getOffSysMonthTotals() {
+  var shifts_data = JSON.parse(localStorage.getItem('lpr_shifts')||'[]');
+  var now = new Date();
+  var thisMonth = now.getFullYear()+'-'+(String(now.getMonth()+1).padStart(2,'0'));
+  var cash = 0, ath = 0;
+  shifts_data.forEach(function(sh){
+    if(!sh['s-date']||!sh['s-date'].startsWith(thisMonth)) return;
+    (sh.offSys||[]).forEach(function(e){
+      if(e.method==='Cash') cash += (parseFloat(e.amount)||0);
+      else ath += (parseFloat(e.amount)||0);
+    });
+  });
+  return { cash: cash, ath: ath, total: cash+ath };
+}
+
+function buildOffSysHistory() {
+  var shifts_data = JSON.parse(localStorage.getItem('lpr_shifts')||'[]');
+  var now = new Date();
+  var thisMonth = now.getFullYear()+'-'+(String(now.getMonth()+1).padStart(2,'0'));
+  var rows = [];
+  shifts_data.forEach(function(sh){
+    if(!sh['s-date']||!sh['s-date'].startsWith(thisMonth)) return;
+    (sh.offSys||[]).forEach(function(e){
+      rows.push({ date: sh['s-date'], staff: sh['s-staff']||'—', method: e.method,
+        service: e.service, machine: e.machine, amount: parseFloat(e.amount)||0 });
+    });
+  });
+  var tbody = document.getElementById('offsys-history-table');
+  if(!tbody) return;
+  if(rows.length===0){
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">'+(lang==='en'?'No off-system transactions recorded yet.':' No hay transacciones fuera del sistema aún.')+'</td></tr>';
+  } else {
+    var sorted = rows.slice().reverse();
+    tbody.innerHTML = sorted.map(function(r){
+      var mc = r.method==='Cash'?'offsys-method-cash':'offsys-method-ath';
+      var ml = r.method==='Cash'?(lang==='en'?'CASH':'EFECTIVO'):'ATH MÓVIL';
+      return '<tr><td>'+r.date+'</td><td>'+r.staff+'</td>'+
+        '<td><span class="offsys-entry-method '+mc+'">'+ ml +'</span></td>'+
+        '<td>'+r.service+'</td><td>'+r.machine+'</td>'+
+        '<td style="font-weight:600">$'+r.amount.toFixed(2)+'</td></tr>';
+    }).join('');
+  }
+  // Update MTD totals
+  var mtd = getOffSysMonthTotals();
+  var mc = document.getElementById('mtd-cash-total');
+  var ma = document.getElementById('mtd-ath-total');
+  if(mc) mc.textContent = '$'+mtd.cash.toFixed(2);
+  if(ma) ma.textContent = '$'+mtd.ath.toFixed(2);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────
+// FIX: runs updateAll, buildMachineTable, and buildPL on every page load
+// so charts and data display correctly even on first open after data entry.
+window.onload = function() {
+  updateDate();
+  setInterval(updateDate, 60000);
+  loadSettingsUI();
+  updateAll();
+  updateMaintTable();
+  buildMachineTable();
+  buildMachineCharts();
+  buildPL();
+  buildOffSysHistory();
+  checkFcConnectionStatus();
+  var today = new Date().toISOString().slice(0,10);
+  document.getElementById('s-date').value = today;
+  document.getElementById('m-date').value = today;
+};
+</script>
+</body>
+</html>
