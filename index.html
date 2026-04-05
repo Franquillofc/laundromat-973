@@ -388,7 +388,7 @@ tr:hover td { background: var(--bg); }
     </div>
     <div class="grid3">
       <div class="machine-card">
-        <div class="machine-name">Encore Pro Washers × 9</div>
+        <div class="machine-name">Encore Pro Washers × 10</div>
         <div class="machine-spec">22 lb · 120V · 15A · 14 gal/cycle</div>
         <div class="machine-stat"><span data-en="Elec/cycle" data-es="Elec/ciclo">Elec/cycle</span><span id="ms-ew-elec">—</span></div>
         <div class="machine-stat"><span data-en="Water/cycle" data-es="Agua/ciclo">Water/cycle</span><span id="ms-ew-water">—</span></div>
@@ -402,7 +402,7 @@ tr:hover td { background: var(--bg); }
         <div class="machine-stat"><span data-en="Cost/cycle" data-es="Costo/ciclo">Cost/cycle</span><span id="ms-dw-total">—</span></div>
       </div>
       <div class="machine-card">
-        <div class="machine-name">Encore Pro Dryers × 4</div>
+        <div class="machine-name">Encore Pro Dryers × 2</div>
         <div class="machine-spec">22 lb · Gas · 19k BTU/hr</div>
         <div class="machine-stat"><span data-en="Propane/cycle" data-es="Propano/ciclo">Propane/cycle</span><span id="ms-ed-prop">—</span></div>
         <div class="machine-stat"><span data-en="Elec/cycle" data-es="Elec/ciclo">Elec/cycle</span><span id="ms-ed-elec">—</span></div>
@@ -479,9 +479,13 @@ tr:hover td { background: var(--bg); }
 
       <div class="card section-gap">
         <div class="card-title" data-en="Card / FasCard Revenue" data-es="Ingresos Tarjeta / FasCard">Card / FasCard Revenue</div>
-        <div class="form-row">
+        <div class="form-row" id="rev-self-row">
           <label data-en="Self-service revenue ($)" data-es="Ingresos autoservicio ($)">Self-service revenue ($)</label>
-          <div class="input-prefix"><span>$</span><input type="number" id="s-rev-self" placeholder="0.00" step="0.01" min="0"></div>
+          <div style="display:flex;gap:6px;align-items:center;width:100%">
+            <div class="input-prefix" style="flex:1"><span>$</span><input type="number" id="s-rev-self" placeholder="0.00" step="0.01" min="0" readonly style="background:var(--surface2);color:var(--text2)"></div>
+            <span id="rev-self-source" class="badge badge-green" style="white-space:nowrap;font-size:10px">FasCard</span>
+            <button class="btn btn-secondary btn-sm" onclick="toggleRevOverride()" id="rev-override-btn" data-en="Override" data-es="Editar" style="white-space:nowrap;font-size:11px">Override</button>
+          </div>
         </div>
         <div class="form-row">
           <label data-en="Drop-off revenue ($)" data-es="Ingresos drop-off ($)">Drop-off revenue ($)</label>
@@ -578,44 +582,70 @@ tr:hover td { background: var(--bg); }
       </div>
     </div>
 
-    <!-- COL 3: Cycles per machine -->
+    <!-- COL 3: Cycle Sync Status (Option A) — hidden fallback inputs always present for data capture -->
     <div>
-      <div class="card section-gap">
-        <div class="card-title" data-en="Cycles Per Machine" data-es="Ciclos Por Máquina">Cycles Per Machine</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:12px" data-en="Enter the number of cycles each machine completed during your shift." data-es="Ingrese el número de ciclos que cada máquina completó durante su turno.">Enter cycles each machine completed.</div>
-        <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px" data-en="WASHERS" data-es="LAVADORAS">WASHERS</div>
-        <div class="machine-input-grid" style="margin-bottom:14px">
-          <div class="machine-input"><label>Encore W1</label><input type="number" id="c-ew1" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore W2</label><input type="number" id="c-ew2" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore W3</label><input type="number" id="c-ew3" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore W4</label><input type="number" id="c-ew4" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore W5</label><input type="number" id="c-ew5" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore W6</label><input type="number" id="c-ew6" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore W7</label><input type="number" id="c-ew7" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore W8</label><input type="number" id="c-ew8" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore W9</label><input type="number" id="c-ew9" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore W10</label><input type="number" id="c-ew10" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter W1</label><input type="number" id="c-dw1" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter W2</label><input type="number" id="c-dw2" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter W3</label><input type="number" id="c-dw3" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter W4</label><input type="number" id="c-dw4" placeholder="0" min="0"></div>
-        </div>
-        <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px" data-en="DRYERS (each pocket)" data-es="SECADORAS (cada bolsillo)">DRYERS (each pocket)</div>
-        <div class="machine-input-grid">
-          <div class="machine-input"><label>Encore D1</label><input type="number" id="c-ed1" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore D2</label><input type="number" id="c-ed2" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore D3</label><input type="number" id="c-ed3" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Encore D4</label><input type="number" id="c-ed4" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter P1</label><input type="number" id="c-dp1" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter P2</label><input type="number" id="c-dp2" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter P3</label><input type="number" id="c-dp3" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter P4</label><input type="number" id="c-dp4" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter P5</label><input type="number" id="c-dp5" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter P6</label><input type="number" id="c-dp6" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter P7</label><input type="number" id="c-dp7" placeholder="0" min="0"></div>
-          <div class="machine-input"><label>Dexter P8</label><input type="number" id="c-dp8" placeholder="0" min="0"></div>
+      <!-- HIDDEN cycle inputs — always in DOM for data capture, shown only when FasCard offline -->
+      <div id="cycle-fallback" style="display:none">
+        <div class="card section-gap">
+          <div style="background:var(--amber-light);border:1px solid #D97706;border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--amber);margin-bottom:12px">
+            ⚠ <strong data-en="FasCard sync unavailable — enter cycles manually." data-es="Sincronización FasCard no disponible — ingrese ciclos manualmente.">FasCard sync unavailable — enter cycles manually.</strong>
+          </div>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px" data-en="WASHERS" data-es="LAVADORAS">WASHERS</div>
+          <div class="machine-input-grid" style="margin-bottom:14px">
+            <div class="machine-input"><label>Encore W1</label><input type="number" id="c-ew1" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore W2</label><input type="number" id="c-ew2" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore W3</label><input type="number" id="c-ew3" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore W4</label><input type="number" id="c-ew4" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore W5</label><input type="number" id="c-ew5" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore W6</label><input type="number" id="c-ew6" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore W7</label><input type="number" id="c-ew7" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore W8</label><input type="number" id="c-ew8" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore W9</label><input type="number" id="c-ew9" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore W10</label><input type="number" id="c-ew10" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter W1</label><input type="number" id="c-dw1" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter W2</label><input type="number" id="c-dw2" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter W3</label><input type="number" id="c-dw3" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter W4</label><input type="number" id="c-dw4" placeholder="0" min="0"></div>
+          </div>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px" data-en="DRYERS (each pocket)" data-es="SECADORAS (cada bolsillo)">DRYERS (each pocket)</div>
+          <div class="machine-input-grid">
+            <div class="machine-input"><label>Encore D1</label><input type="number" id="c-ed1" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore D2</label><input type="number" id="c-ed2" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore D3</label><input type="number" id="c-ed3" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Encore D4</label><input type="number" id="c-ed4" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter P1</label><input type="number" id="c-dp1" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter P2</label><input type="number" id="c-dp2" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter P3</label><input type="number" id="c-dp3" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter P4</label><input type="number" id="c-dp4" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter P5</label><input type="number" id="c-dp5" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter P6</label><input type="number" id="c-dp6" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter P7</label><input type="number" id="c-dp7" placeholder="0" min="0"></div>
+            <div class="machine-input"><label>Dexter P8</label><input type="number" id="c-dp8" placeholder="0" min="0"></div>
+          </div>
         </div>
       </div>
+
+      <!-- SYNC STATUS PANEL — shown when FasCard connected -->
+      <div id="cycle-sync-panel" class="card section-gap">
+        <div class="card-title" data-en="Cycles — FasCard Synced" data-es="Ciclos — Sincronizado con FasCard">Cycles — FasCard Synced</div>
+        <div id="cycle-sync-status">
+          <div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">
+            <div style="font-size:24px;margin-bottom:8px">⟳</div>
+            <span data-en="Tap Sync Now on the Owner Dashboard to load today's cycles automatically." data-es="Toque Sincronizar en el Panel del Dueño para cargar los ciclos de hoy automáticamente.">Tap Sync Now on the Owner Dashboard to load today's cycles automatically.</span>
+          </div>
+        </div>
+        <div id="cycle-sync-grid" style="display:none">
+          <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px" data-en="WASHERS" data-es="LAVADORAS">WASHERS</div>
+          <div id="cycle-display-washers" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-bottom:12px"></div>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px" data-en="DRYERS" data-es="SECADORAS">DRYERS</div>
+          <div id="cycle-display-dryers" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px"></div>
+        </div>
+        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div id="cycle-sync-time" style="font-size:11px;color:var(--text3)"></div>
+          <button class="btn btn-secondary btn-sm" onclick="showCycleFallback()" data-en="Enter manually instead" data-es="Ingresar manualmente">Enter manually instead</button>
+        </div>
+      </div>
+
       <button class="shift-complete" onclick="submitShift()" data-en="✓ Submit Shift Report" data-es="✓ Enviar Reporte de Turno">✓ Submit Shift Report</button>
     </div>
   </div>
@@ -951,6 +981,20 @@ tr:hover td { background: var(--bg); }
       <div class="fc-machine-tag"><span>Encore D2</span><span class="fc-id">ID 33</span></div>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-top:8px" data-en="This mapping is confirmed from your FasCard Setup → Machines screen. Do not modify unless FasCard machine IDs change." data-es="Este mapa está confirmado de su pantalla FasCard Configuración → Máquinas. No modifique a menos que los IDs de FasCard cambien.">This mapping is confirmed from your FasCard Setup → Machines screen. Do not modify unless FasCard machine IDs change.</div>
+  </div>
+
+  <div class="card section-gap">
+    <div class="section-heading"><h3 data-en="FasCard Historical Import" data-es="Importación Histórica FasCard">FasCard Historical Import</h3></div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm)" data-en="Pull all FasCard transaction data from the laundromat opening date to today. This populates historical cycle counts and revenue. Run once — safe to re-run to refresh." data-es="Extraiga todos los datos de transacciones FasCard desde la apertura hasta hoy. Esto llena los conteos históricos de ciclos e ingresos.">Pull all FasCard transaction data from the laundromat opening date to today. This populates historical cycle counts and revenue. Run once — safe to re-run to refresh.</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div class="form-row" style="margin:0">
+        <label data-en="Import from date" data-es="Importar desde fecha">Import from date</label>
+        <input type="date" id="hist-start-date" value="2026-03-03" style="width:160px">
+      </div>
+      <button class="btn btn-primary" onclick="fasCardHistoricalImport()" id="hist-import-btn" data-en="Import Historical Data" data-es="Importar Datos Históricos">Import Historical Data</button>
+    </div>
+    <div id="hist-import-status" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
+    <div id="hist-import-log" class="fc-sync-log" style="display:none;margin-top:8px"></div>
   </div>
 
   <div class="card section-gap">
@@ -1769,16 +1813,42 @@ function fasCardSync() {
         return r.json();
       })
       .then(function(data) {
-        var records = Array.isArray(data) ? data : (data.Items || data.Records || data.Data || []);
+        // Handle all FasCard response formats
+        var records = [];
+        if(Array.isArray(data)) records = data;
+        else if(data && Array.isArray(data.Items)) records = data.Items;
+        else if(data && Array.isArray(data.Records)) records = data.Records;
+        else if(data && Array.isArray(data.Data)) records = data.Data;
+        else if(data && typeof data === 'object') {
+          // Some endpoints return a single object — wrap it
+          var keys = Object.keys(data);
+          if(keys.length > 0) records = [data];
+        }
         var cycles = 0, revenue = 0;
         records.forEach(function(rec) {
-          // Count "Started machine" transactions as cycles
-          var ttype = (rec.TransType || rec.TransactionType || rec.Type || '').toLowerCase();
-          if(ttype.indexOf('start') !== -1 || ttype === '1' || ttype === 'vend') {
-            cycles++;
-            revenue += parseFloat(rec.CreditCard || rec.Amount || rec.Spend || rec.Total || 0);
+          if(!rec) return;
+          // FasCard transaction types: 1=Vend/Start, 2=Refund, 3=Adjustment
+          var ttype = String(rec.TransType || rec.TransactionType || rec.Type || rec.type || '').toLowerCase();
+          var isStart = ttype === '1' || ttype === 'vend' || ttype === 'start'
+            || ttype.indexOf('start') !== -1 || ttype.indexOf('vend') !== -1;
+          if(isStart || ttype === '') {
+            // Count as cycle if it looks like a vend transaction
+            var amt = parseFloat(rec.CreditCard || rec.Credit || rec.CardAmount
+              || rec.Amount || rec.Spend || rec.Total || rec.sale || 0);
+            if(amt > 0 || isStart) {
+              cycles++;
+              revenue += amt;
+            }
           }
         });
+        // If we got records but parsed 0 cycles, count all records as cycles
+        // (FasCard history endpoint returns one record per transaction)
+        if(records.length > 0 && cycles === 0) {
+          cycles = records.length;
+          records.forEach(function(rec) {
+            revenue += parseFloat(rec.CreditCard || rec.Credit || rec.Amount || rec.Spend || rec.Total || 0);
+          });
+        }
         results[machId] = { cycles: cycles, revenue: revenue, offline: false };
         pending--;
         if(pending === 0) processSyncResults(results, token, minDT, maxDT, btn);
@@ -1795,29 +1865,64 @@ function fasCardSync() {
 
 function processSyncResults(results, token, minDT, maxDT, btn) {
   var totalCycles = 0, totalRevenue = 0, machineCount = 0, errorCount = 0;
+  var washerRows = [], dryerRows = [];
 
-  // Apply cycle counts to daily entry form fields
   Object.keys(results).forEach(function(machId) {
     var r = results[machId];
     var machine = FC_MACHINE_MAP[parseInt(machId)];
     if(!machine) return;
+
+    // Always write to hidden input for data capture
     var inputEl = document.getElementById(machine.cycleKey);
-    if(inputEl && !r.offline) {
-      inputEl.value = r.cycles;
-      if(r.cycles > 0) { inputEl.style.background = '#D1FAE5'; machineCount++; }
-    }
+    if(inputEl) inputEl.value = r.offline ? 0 : (r.cycles || 0);
+
     if(!r.offline && !r.error) {
       totalCycles += (r.cycles || 0);
       totalRevenue += (r.revenue || 0);
+      if(r.cycles > 0) machineCount++;
     }
     if(r.error) errorCount++;
+
+    // Build display card for sync panel
+    var isOffline = r.offline || false;
+    var cycles = isOffline ? 0 : (r.cycles || 0);
+    var cardStyle = isOffline
+      ? 'background:var(--red-light);border:1px solid var(--red);border-radius:6px;padding:8px;text-align:center;'
+      : (cycles > 0 ? 'background:var(--accent-light);border:1px solid var(--accent2);border-radius:6px;padding:8px;text-align:center;' : 'background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center;');
+    var labelColor = isOffline ? 'color:var(--red)' : (cycles > 0 ? 'color:var(--accent)' : 'color:var(--text3)');
+    var card = '<div style="'+cardStyle+'">'+
+      '<div style="font-size:10px;font-weight:600;'+labelColor+'">'+machine.label+(isOffline?' ⚠':'') + '</div>'+
+      '<div style="font-size:18px;font-weight:600;color:var(--text)">'+( isOffline ? '—' : cycles)+'</div>'+
+      '</div>';
+
+    if(machine.type === 'washer_encore' || machine.type === 'washer_dexter') washerRows.push(card);
+    else dryerRows.push(card);
   });
 
-  // Auto-populate self-service revenue field
+  // Update sync status panel (Option A)
+  var syncGrid = document.getElementById('cycle-sync-grid');
+  var syncStatus = document.getElementById('cycle-sync-status');
+  var wDiv = document.getElementById('cycle-display-washers');
+  var dDiv = document.getElementById('cycle-display-dryers');
+  if(syncGrid && wDiv && dDiv) {
+    wDiv.innerHTML = washerRows.join('');
+    dDiv.innerHTML = dryerRows.join('');
+    syncGrid.style.display = 'block';
+    if(syncStatus) syncStatus.style.display = 'none';
+  }
+  var syncTime = document.getElementById('cycle-sync-time');
+  if(syncTime) syncTime.textContent = (lang==='en'?'Synced at ':'Sincronizado a ') + new Date().toLocaleTimeString();
+
+  // Show sync panel, hide fallback
+  showCycleSyncPanel();
+
+  // Auto-populate self-service revenue (read-only with FasCard data)
   var revEl = document.getElementById('s-rev-self');
   if(revEl && totalRevenue > 0) {
     revEl.value = totalRevenue.toFixed(2);
-    revEl.style.background = '#D1FAE5';
+    revEl.removeAttribute('readonly');
+    revEl.setAttribute('readonly', 'true');
+    revEl.style.background = 'var(--surface2)';
   }
 
   // Update last sync time
@@ -1835,6 +1940,41 @@ function processSyncResults(results, token, minDT, maxDT, btn) {
 
   if(btn) btn.disabled = false;
   showToast(lang==='en'?'FasCard sync complete! '+totalCycles+' cycles loaded.':'¡Sincronización completa! '+totalCycles+' ciclos cargados.');
+}
+
+function showCycleSyncPanel() {
+  var panel = document.getElementById('cycle-sync-panel');
+  var fallback = document.getElementById('cycle-fallback');
+  if(panel) panel.style.display = 'block';
+  if(fallback) fallback.style.display = 'none';
+}
+
+function showCycleFallback() {
+  var panel = document.getElementById('cycle-sync-panel');
+  var fallback = document.getElementById('cycle-fallback');
+  if(panel) panel.style.display = 'none';
+  if(fallback) fallback.style.display = 'block';
+}
+
+function toggleRevOverride() {
+  var revEl = document.getElementById('s-rev-self');
+  var btn = document.getElementById('rev-override-btn');
+  var badge = document.getElementById('rev-self-source');
+  if(!revEl) return;
+  if(revEl.hasAttribute('readonly')) {
+    revEl.removeAttribute('readonly');
+    revEl.style.background = 'var(--surface)';
+    revEl.style.color = 'var(--text)';
+    revEl.focus();
+    if(btn) btn.textContent = lang==='en'?'Lock':'Bloquear';
+    if(badge) { badge.textContent = 'MANUAL'; badge.className='badge badge-amber'; }
+  } else {
+    revEl.setAttribute('readonly','true');
+    revEl.style.background = 'var(--surface2)';
+    revEl.style.color = 'var(--text2)';
+    if(btn) btn.textContent = lang==='en'?'Override':'Editar';
+    if(badge) { badge.textContent = 'MANUAL'; badge.className='badge badge-amber'; }
+  }
 }
 
 // ── CHECK CONNECTION STATUS ON LOAD ──────────────────────────────────────
@@ -1974,6 +2114,160 @@ function buildOffSysHistory() {
   var ma = document.getElementById('mtd-ath-total');
   if(mc) mc.textContent = '$'+mtd.cash.toFixed(2);
   if(ma) ma.textContent = '$'+mtd.ath.toFixed(2);
+}
+
+// ── HISTORICAL IMPORT ────────────────────────────────────────────────────
+function fasCardHistoricalImport() {
+  var startDate = document.getElementById('hist-start-date').value;
+  if(!startDate) {
+    showToast(lang==='en'?'Please select a start date.':'Por favor seleccione una fecha de inicio.');
+    return;
+  }
+  var btn = document.getElementById('hist-import-btn');
+  var status = document.getElementById('hist-import-status');
+  var log = document.getElementById('hist-import-log');
+  if(btn) btn.disabled = true;
+  if(log) { log.style.display='block'; log.innerHTML=''; }
+  if(status) status.textContent = lang==='en'?'Starting historical import...':'Iniciando importación histórica...';
+
+  function logHist(msg) {
+    if(!log) return;
+    var entry = document.createElement('div');
+    entry.className = 'fc-sync-log-entry';
+    entry.textContent = '['+new Date().toLocaleTimeString()+'] ' + msg;
+    log.insertBefore(entry, log.firstChild);
+  }
+
+  withToken(function(err, token) {
+    if(err) {
+      if(status) status.textContent = lang==='en'?'Not connected. Configure FasCard in Settings first.':'No conectado. Configure FasCard primero.';
+      if(btn) btn.disabled = false;
+      return;
+    }
+
+    var start = new Date(startDate + 'T00:00:00');
+    var end = new Date();
+    logHist('Importing from ' + start.toLocaleDateString() + ' to ' + end.toLocaleDateString());
+
+    // Build list of date ranges — one per day to avoid hitting API limits
+    var days = [];
+    var cur = new Date(start);
+    while(cur <= end) {
+      var dayStart = new Date(cur);
+      var dayEnd = new Date(cur);
+      dayEnd.setHours(23,59,59);
+      days.push({
+        date: dayStart.toISOString().slice(0,10),
+        minDT: dayStart.toISOString().slice(0,19),
+        maxDT: dayEnd.toISOString().slice(0,19)
+      });
+      cur.setDate(cur.getDate()+1);
+    }
+
+    logHist('Processing ' + days.length + ' days across 20 machines...');
+    if(status) status.textContent = (lang==='en'?'Importing ':'Importando ') + days.length + (lang==='en'?' days...':' días...');
+
+    var machineIds = Object.keys(FC_MACHINE_MAP).map(Number).filter(function(id){ return !FC_MACHINE_MAP[id].offline; });
+    var importedShifts = [];
+    var daysProcessed = 0;
+
+    function processDay(dayIdx) {
+      if(dayIdx >= days.length) {
+        finalizeImport(importedShifts, days.length, btn, status, logHist);
+        return;
+      }
+      var day = days[dayIdx];
+      var dayCycles = {}, dayRevenue = 0;
+      var pending = machineIds.length;
+
+      machineIds.forEach(function(machId) {
+        var url = getFcBaseUrl() + '?action=machine_history&machId=' + machId
+          + '&minDT=' + encodeURIComponent(day.minDT)
+          + '&maxDT=' + encodeURIComponent(day.maxDT) + '&limit=200';
+        fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function(r){ return r.ok ? r.json() : []; })
+        .then(function(data) {
+          var records = Array.isArray(data) ? data : (data.Items||data.Records||data.Data||[]);
+          if(records.length === 0 && data && typeof data === 'object' && !Array.isArray(data)) {
+            var vals = Object.values(data);
+            if(vals.length > 0) records = vals;
+          }
+          var cycles = records.length > 0 ? records.length : 0;
+          var rev = 0;
+          records.forEach(function(rec){ rev += parseFloat(rec.CreditCard||rec.Credit||rec.Amount||rec.Spend||rec.Total||0); });
+          dayCycles[machId] = cycles;
+          dayRevenue += rev;
+          pending--;
+          if(pending === 0) {
+            // Build shift entry for this day if any activity
+            var totalDayCycles = Object.values(dayCycles).reduce(function(a,b){return a+b;},0);
+            if(totalDayCycles > 0 || dayRevenue > 0) {
+              var entry = { 's-date': day.date, 's-staff': 'FasCard Import', 's-shift': 'Full day',
+                's-rev-self': dayRevenue.toFixed(2), 's-rev-drop': '0', 's-drop-lbs': '0',
+                's-discount': '0', 's-soap': '0', 's-softener': '0', 's-bags': '0',
+                's-issues': '', 's-complaints': '', 's-notes': 'Imported from FasCard historical data',
+                offSys: [] };
+              // Map machine IDs to cycle keys
+              Object.keys(dayCycles).forEach(function(machId) {
+                var machine = FC_MACHINE_MAP[parseInt(machId)];
+                if(machine) entry[machine.cycleKey] = dayCycles[machId];
+              });
+              importedShifts.push(entry);
+            }
+            daysProcessed++;
+            if(daysProcessed % 5 === 0) logHist('Processed ' + daysProcessed + '/' + days.length + ' days...');
+            // Small delay to avoid rate limiting
+            setTimeout(function(){ processDay(dayIdx+1); }, 100);
+          }
+        })
+        .catch(function() {
+          pending--;
+          if(pending === 0) { setTimeout(function(){ processDay(dayIdx+1); }, 100); }
+        });
+      });
+    }
+
+    processDay(0);
+  });
+}
+
+function finalizeImport(importedShifts, totalDays, btn, status, logHist) {
+  if(importedShifts.length === 0) {
+    if(status) status.textContent = lang==='en'?'No data found for the selected date range.':'No se encontraron datos para el rango de fechas seleccionado.';
+    if(btn) btn.disabled = false;
+    return;
+  }
+
+  // Merge with existing shifts — don't overwrite manually entered data
+  var existing = JSON.parse(localStorage.getItem('lpr_shifts')||'[]');
+  var existingDates = {};
+  existing.forEach(function(sh){ if(sh['s-date']) existingDates[sh['s-date']] = true; });
+
+  var added = 0, skipped = 0;
+  importedShifts.forEach(function(sh) {
+    if(existingDates[sh['s-date']]) {
+      skipped++;
+    } else {
+      existing.push(sh);
+      added++;
+    }
+  });
+
+  // Sort by date
+  existing.sort(function(a,b){ return (a['s-date']||'').localeCompare(b['s-date']||''); });
+  localStorage.setItem('lpr_shifts', JSON.stringify(existing));
+
+  logHist('Import complete: ' + added + ' days added, ' + skipped + ' skipped (already had data).');
+  if(status) status.innerHTML = '<span style="color:var(--accent2);font-weight:600">'
+    + (lang==='en'?'Import complete! ':'¡Importación completa! ')
+    + added + (lang==='en'?' days imported':' días importados')
+    + (skipped > 0 ? ' · ' + skipped + (lang==='en'?' skipped (existing data preserved)':' omitidos (datos existentes preservados)') : '')
+    + '</span>';
+
+  if(btn) btn.disabled = false;
+  updateAll();
+  buildPL();
+  showToast(lang==='en'?'Historical import complete! '+added+' days loaded.':'¡Importación completa! '+added+' días cargados.');
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────
