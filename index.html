@@ -2277,7 +2277,7 @@ function runDiagnostic() {
   var btn = document.getElementById('diag-btn');
   var out = document.getElementById('diag-result');
   if(btn) btn.disabled = true;
-  if(out) { out.style.display='block'; out.textContent='Running diagnostic...'; }
+  if(out) { out.style.display='block'; out.textContent='Fetching machine list to find true internal IDs...'; }
 
   withToken(function(err, token) {
     if(err) {
@@ -2286,12 +2286,65 @@ function runDiagnostic() {
       return;
     }
 
-    var url = getFcBaseUrl() + '?action=diagnose&machId=26&locId=4661';
+    // Step 1: Get machines list to find true internal IDs
+    var url = getFcBaseUrl() + '?action=machines_list&locId=4661';
     fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      if(out) out.textContent = JSON.stringify(data, null, 2);
-      if(btn) btn.disabled = false;
+      var machineListResult = JSON.stringify(data, null, 2);
+      if(out) out.textContent = '=== MACHINES LIST (shows true internal IDs) ===
+' + machineListResult;
+
+      // Step 2: Try to extract first machine ID and test history call
+      var machines = [];
+      if(data.data && Array.isArray(data.data)) machines = data.data;
+      else if(Array.isArray(data)) machines = data;
+
+      if(machines.length > 0) {
+        var firstId = machines[0].ID || machines[0].Id || machines[0].MachineID
+          || machines[0].machineId || machines[0].id || null;
+        if(firstId) {
+          if(out) out.textContent += '
+
+=== Testing history for ID: ' + firstId + ' ===
+Fetching...';
+          var histUrl = getFcBaseUrl() + '?action=machine_history&machId=' + firstId + '&limit=3';
+          fetch(histUrl, { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(function(r2) { return r2.json(); })
+          .then(function(histData) {
+            if(out) out.textContent += '
+' + JSON.stringify(histData, null, 2);
+            if(btn) btn.disabled = false;
+          })
+          .catch(function(e2) {
+            if(out) out.textContent += '
+History fetch error: ' + e2.message;
+            if(btn) btn.disabled = false;
+          });
+        } else {
+          if(out) out.textContent += '
+
+Could not find ID field in machine records.';
+          if(btn) btn.disabled = false;
+        }
+      } else {
+        // Try diagnose endpoint as fallback
+        var diagUrl = getFcBaseUrl() + '?action=diagnose&locId=4661';
+        fetch(diagUrl, { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function(r3) { return r3.json(); })
+        .then(function(diagData) {
+          if(out) out.textContent += '
+
+=== DIAGNOSE ===
+' + JSON.stringify(diagData, null, 2);
+          if(btn) btn.disabled = false;
+        })
+        .catch(function(e3) {
+          if(out) out.textContent += '
+Diagnose error: ' + e3.message;
+          if(btn) btn.disabled = false;
+        });
+      }
     })
     .catch(function(e) {
       if(out) out.textContent = 'Diagnostic error: ' + e.message;
