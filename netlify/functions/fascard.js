@@ -1,11 +1,8 @@
 // Netlify Function — FasCard API Proxy
 // Laundromat 973 · F2274
-// This function runs on Netlify's server, not in the browser.
-// It forwards requests to FasCard's API, bypassing browser CORS restrictions.
-// Credentials are passed from the dashboard and never stored on this server.
+// Server-side proxy to bypass browser CORS restrictions.
 
 const https = require('https');
-
 const FASCARD_BASE = 'm.fascard.com';
 
 function httpsRequest(options, body) {
@@ -14,11 +11,8 @@ function httpsRequest(options, body) {
       let data = '';
       res.on('data', function(chunk) { data += chunk; });
       res.on('end', function() {
-        try {
-          resolve({ status: res.statusCode, body: JSON.parse(data) });
-        } catch(e) {
-          resolve({ status: res.statusCode, body: data });
-        }
+        try { resolve({ status: res.statusCode, body: JSON.parse(data), raw: data }); }
+        catch(e) { resolve({ status: res.statusCode, body: data, raw: data }); }
       });
     });
     req.on('error', reject);
@@ -28,7 +22,6 @@ function httpsRequest(options, body) {
 }
 
 exports.handler = async function(event, context) {
-  // CORS headers — allow requests from any origin (our dashboard)
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -36,7 +29,6 @@ exports.handler = async function(event, context) {
     'Content-Type': 'application/json'
   };
 
-  // Handle preflight OPTIONS request
   if(event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
@@ -49,7 +41,7 @@ exports.handler = async function(event, context) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing action parameter' }) };
     }
 
-    // ── ACTION: auth — get Bearer Token ──────────────────────────────────
+    // ── AUTH ──────────────────────────────────────────────────────────────
     if(action === 'auth') {
       let body;
       try { body = JSON.parse(event.body || '{}'); } catch(e) { body = {}; }
@@ -62,27 +54,20 @@ exports.handler = async function(event, context) {
         hostname: FASCARD_BASE,
         path: '/api/AuthToken',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload)
-        }
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
       };
       const result = await httpsRequest(options, payload);
       return { statusCode: result.status, headers, body: JSON.stringify(result.body) };
     }
 
-    // ── All other actions require a Bearer token ──────────────────────────
+    // ── TOKEN CHECK ───────────────────────────────────────────────────────
     const token = (event.headers['authorization'] || '').replace('Bearer ', '');
     if(!token) {
-      return { statusCode: 401, headers, body: JSON.stringify({ error: 'No authorization token provided' }) };
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'No authorization token' }) };
     }
+    const authHeaders = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
 
-    const authHeaders = {
-      'Authorization': 'Bearer ' + token,
-      'Content-Type': 'application/json'
-    };
-
-    // ── ACTION: machine_history — get cycles for a specific machine ────────
+    // ── MACHINE HISTORY ───────────────────────────────────────────────────
     if(action === 'machine_history') {
       const machId = params.machId;
       const minDT  = params.minDT || '';
@@ -96,10 +81,35 @@ exports.handler = async function(event, context) {
       if(maxDT) path += '&MaxDateTime=' + encodeURIComponent(maxDT);
       const options = { hostname: FASCARD_BASE, path, method: 'GET', headers: authHeaders };
       const result = await httpsRequest(options, null);
-      return { statusCode: result.status, headers, body: JSON.stringify(result.body) };
+      // Return both parsed body AND raw string so dashboard can inspect format
+      return { statusCode: result.status, headers,
+        body: JSON.stringify({ data: result.body, raw: result.raw.slice(0, 2000) }) };
     }
 
-    // ── ACTION: machine_status — get live status of all machines ──────────
+    // ── DIAGNOSTIC — raw response for one machine ─────────────────────────
+    if(action === 'diagnose') {
+      const machId = params.machId || '1';
+      const locId  = params.locId  || '4661';
+      // Try multiple endpoints to see which ones return data
+      const endpoints = [
+        '/api/Machine/' + machId + '/History?Limit=5',
+        '/api/Transactions?LocationID=' + locId + '&Limit=5',
+        '/api/Machine/' + machId,
+      ];
+      const results = {};
+      for(const ep of endpoints) {
+        try {
+          const opts = { hostname: FASCARD_BASE, path: ep, method: 'GET', headers: authHeaders };
+          const r = await httpsRequest(opts, null);
+          results[ep] = { status: r.status, sample: r.raw.slice(0, 500) };
+        } catch(e) {
+          results[ep] = { error: e.message };
+        }
+      }
+      return { statusCode: 200, headers, body: JSON.stringify(results) };
+    }
+
+    // ── MACHINE STATUS ────────────────────────────────────────────────────
     if(action === 'machine_status') {
       const locId = params.locId || '4661';
       const path = '/api/Machine?LocationID=' + locId + '&Limit=50';
@@ -108,7 +118,7 @@ exports.handler = async function(event, context) {
       return { statusCode: result.status, headers, body: JSON.stringify(result.body) };
     }
 
-    // ── ACTION: transactions — get revenue transactions ───────────────────
+    // ── TRANSACTIONS ──────────────────────────────────────────────────────
     if(action === 'transactions') {
       const locId  = params.locId || '4661';
       const minDT  = params.minDT || '';
@@ -122,7 +132,7 @@ exports.handler = async function(event, context) {
       return { statusCode: result.status, headers, body: JSON.stringify(result.body) };
     }
 
-    // ── ACTION: system_stats — get summary statistics ─────────────────────
+    // ── SYSTEM STATS ──────────────────────────────────────────────────────
     if(action === 'system_stats') {
       const path = '/api/SysStats?Types=Turns,Revenue';
       const options = { hostname: FASCARD_BASE, path, method: 'GET', headers: authHeaders };
@@ -133,10 +143,6 @@ exports.handler = async function(event, context) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Unknown action: ' + action }) };
 
   } catch(err) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Proxy error: ' + err.message })
-    };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Proxy error: ' + err.message }) };
   }
 };
