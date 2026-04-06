@@ -992,7 +992,9 @@ tr:hover td { background: var(--bg); }
         <input type="date" id="hist-start-date" value="2026-03-03" style="width:160px">
       </div>
       <button class="btn btn-primary" onclick="fasCardHistoricalImport()" id="hist-import-btn" data-en="Import Historical Data" data-es="Importar Datos Históricos">Import Historical Data</button>
+      <button class="btn btn-secondary btn-sm" onclick="runDiagnostic()" id="diag-btn" data-en="Run Diagnostic" data-es="Diagnóstico">Run Diagnostic</button>
     </div>
+    <div id="diag-result" style="display:none;margin-top:10px;background:#1a1814;color:#e8f5e9;border-radius:8px;padding:12px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:300px;overflow-y:auto"></div>
     <div id="hist-import-status" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
     <div id="hist-import-log" class="fc-sync-log" style="display:none;margin-top:8px"></div>
   </div>
@@ -2268,6 +2270,34 @@ function finalizeImport(importedShifts, totalDays, btn, status, logHist) {
   updateAll();
   buildPL();
   showToast(lang==='en'?'Historical import complete! '+added+' days loaded.':'¡Importación completa! '+added+' días cargados.');
+}
+
+// ── DIAGNOSTIC ───────────────────────────────────────────────────────────
+function runDiagnostic() {
+  var btn = document.getElementById('diag-btn');
+  var out = document.getElementById('diag-result');
+  if(btn) btn.disabled = true;
+  if(out) { out.style.display='block'; out.textContent='Running diagnostic...'; }
+
+  withToken(function(err, token) {
+    if(err) {
+      if(out) out.textContent = 'ERROR: Not connected — ' + err;
+      if(btn) btn.disabled = false;
+      return;
+    }
+
+    var url = getFcBaseUrl() + '?action=diagnose&machId=26&locId=4661';
+    fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if(out) out.textContent = JSON.stringify(data, null, 2);
+      if(btn) btn.disabled = false;
+    })
+    .catch(function(e) {
+      if(out) out.textContent = 'Diagnostic error: ' + e.message;
+      if(btn) btn.disabled = false;
+    });
+  });
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────
