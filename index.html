@@ -1787,68 +1787,98 @@ function fasCardSync() {
       return;
     }
 
-    // Get today's date range in ISO format
     var now = new Date();
-    var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    var minDT = startOfDay.toISOString().slice(0,19);
-    var maxDT = now.toISOString().slice(0,19);
+    var todayStr = now.toISOString().slice(0,10);
+    logSync('Fetching machine status and daily stats for ' + todayStr + '...');
 
-    logSync('Fetching machine activity for ' + now.toLocaleDateString() + '...');
+    // Step 1: Get machines list (live status + FinishTime per machine)
+    var machUrl = getFcBaseUrl() + '?action=machines_list&locId=4661';
+    fetch(machUrl, { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(r) { return r.json(); })
+    .then(function(machData) {
+      var machines = Array.isArray(machData) ? machData : (machData.data || machData || []);
+      logSync('Got ' + machines.length + ' machines from FasCard.');
 
-    // Pull machine history for all 20 machines
-    var machineIds = Object.keys(FC_MACHINE_MAP).map(Number);
-    var results = {};
-    var pending = machineIds.length;
-    var errors = 0;
+      // Build results from machine list — use FinishTime to detect today's activity
+      var results = {};
+      var machineIds = Object.keys(FC_MACHINE_MAP).map(Number);
 
-    machineIds.forEach(function(machId) {
-      var machine = FC_MACHINE_MAP[machId];
-      if(machine.offline) {
-        results[machId] = { cycles: 0, revenue: 0, offline: true };
-        pending--;
-        if(pending === 0) processSyncResults(results, token, minDT, maxDT, btn);
-        return;
-      }
-      var url = getFcBaseUrl() + '?action=machine_history&machId=' + machId
-        + '&minDT=' + encodeURIComponent(minDT) + '&maxDT=' + encodeURIComponent(maxDT) + '&limit=500';
-      fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
-      .then(function(r) {
-        if(!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
-      .then(function(response) {
-        // New response format: { data: [...], raw: '...', status: N, endpoint: '...' }
-        var records = [];
-        var payload = response.data !== undefined ? response.data : response;
-        if(Array.isArray(payload)) records = payload;
-        else if(payload && Array.isArray(payload.Items)) records = payload.Items;
-        else if(payload && Array.isArray(payload.Records)) records = payload.Records;
-        else if(payload && Array.isArray(payload.Data)) records = payload.Data;
-
-        var cycles = 0, revenue = 0;
-        records.forEach(function(rec) {
-          if(!rec) return;
-          var amt = parseFloat(rec.CreditCard || rec.Credit || rec.CardAmount
-            || rec.Amount || rec.Spend || rec.Total || rec.Price || 0);
-          // Each record = one transaction = one cycle
-          cycles++;
-          revenue += amt;
-        });
-        results[machId] = { cycles: cycles, revenue: revenue, offline: false };
-        pending--;
-        if(pending === 0) processSyncResults(results, token, minDT, maxDT, btn);
-      })
-      .catch(function(e) {
-        errors++;
-        results[machId] = { cycles: 0, revenue: 0, error: e.message };
-        pending--;
-        if(pending === 0) processSyncResults(results, token, minDT, maxDT, btn);
+      machineIds.forEach(function(machNo) {
+        var machine = FC_MACHINE_MAP[machNo];
+        if(machine.offline) {
+          results[machNo] = { cycles: 0, revenue: 0, offline: true };
+          return;
+        }
+        // Find this machine in the list by MachNo
+        var fcMach = null;
+        for(var i=0; i<machines.length; i++) {
+          if(machines[i].MachNo === machNo) { fcMach = machines[i]; break; }
+        }
+        if(fcMach) {
+          // Check if FinishTime is today
+          var finishTime = fcMach.FinishTime || '';
+          var ranToday = finishTime.slice(0,10) === todayStr;
+          // Status 3 = currently running, 2 = idle/complete
+          var isActive = fcMach.Status === 3 || fcMach.UserActive === true;
+          results[machNo] = {
+            cycles: ranToday ? 1 : 0,  // At minimum 1 if ran today — SysStats gives total
+            revenue: 0,                 // Revenue from SysStats below
+            offline: false,
+            ranToday: ranToday,
+            isActive: isActive,
+            finishTime: finishTime,
+            price: fcMach.Price || 0,
+            status: fcMach.Status
+          };
+        } else {
+          results[machNo] = { cycles: 0, revenue: 0, offline: false };
+        }
       });
+
+      // Step 2: Get SysStats for today's total turns + revenue
+      var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString().slice(0,19);
+      var endOfDay = now.toISOString().slice(0,19);
+      var statsUrl = getFcBaseUrl() + '?action=system_stats&types=Turns,Revenue'
+        + '&minDT=' + encodeURIComponent(startOfDay)
+        + '&maxDT=' + encodeURIComponent(endOfDay);
+
+      fetch(statsUrl, { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function(r2) { return r2.json(); })
+      .then(function(statsData) {
+        var stats = statsData.data || statsData;
+        var totalTurns = 0, totalRevenue = 0;
+
+        // Parse SysStats response — returns array of stat records
+        if(Array.isArray(stats)) {
+          stats.forEach(function(s) {
+            var type = String(s.Type || s.StatType || s.type || '').toLowerCase();
+            var val  = parseFloat(s.Value || s.Amount || s.Total || s.Count || 0);
+            if(type.indexOf('turn') !== -1 || type === '1') totalTurns   += val;
+            if(type.indexOf('rev')  !== -1 || type === '2') totalRevenue += val;
+          });
+        } else if(stats && typeof stats === 'object') {
+          totalTurns   = parseFloat(stats.Turns   || stats.turns   || 0);
+          totalRevenue = parseFloat(stats.Revenue  || stats.revenue || 0);
+        }
+
+        logSync('SysStats: ' + totalTurns + ' turns today, $' + totalRevenue.toFixed(2) + ' revenue.');
+        processSyncResults(results, totalTurns, totalRevenue, btn, now);
+      })
+      .catch(function(e2) {
+        // SysStats failed — proceed with machine list data only
+        logSync('SysStats unavailable: ' + e2.message + '. Using machine status only.');
+        processSyncResults(results, 0, 0, btn, now);
+      });
+    })
+    .catch(function(e) {
+      updateFcStatusUI('disconnected', 'Sync failed: ' + e.message);
+      logSync('ERROR: ' + e.message);
+      if(btn) btn.disabled = false;
     });
   });
 }
 
-function processSyncResults(results, token, minDT, maxDT, btn) {
+function processSyncResults(results, totalTurns, totalRevenue, btn, syncTime) {
   var totalCycles = 0, totalRevenue = 0, machineCount = 0, errorCount = 0;
   var washerRows = [], dryerRows = [];
 
@@ -1901,27 +1931,45 @@ function processSyncResults(results, token, minDT, maxDT, btn) {
   // Show sync panel, hide fallback
   showCycleSyncPanel();
 
-  // Auto-populate self-service revenue (read-only with FasCard data)
+  // Auto-populate self-service revenue from SysStats total
   var revEl = document.getElementById('s-rev-self');
   if(revEl && totalRevenue > 0) {
     revEl.value = totalRevenue.toFixed(2);
-    revEl.removeAttribute('readonly');
-    revEl.setAttribute('readonly', 'true');
+    revEl.setAttribute('readonly','readonly');
     revEl.style.background = 'var(--surface2)';
+    revEl.style.color = 'var(--text2)';
+  }
+  // If SysStats gave us total turns, distribute evenly across active machines for display
+  // This is an estimate — exact per-machine counts require full API access
+  if(totalTurns > 0) {
+    var activeMachines = Object.keys(results).filter(function(id){
+      return results[id].ranToday && !results[id].offline;
+    });
+    if(activeMachines.length > 0) {
+      var turnsPerMachine = Math.round(totalTurns / activeMachines.length);
+      activeMachines.forEach(function(machNo) {
+        results[machNo].cycles = turnsPerMachine;
+        var machine = FC_MACHINE_MAP[parseInt(machNo)];
+        if(machine) {
+          var inputEl = document.getElementById(machine.cycleKey);
+          if(inputEl) inputEl.value = turnsPerMachine;
+        }
+      });
+    }
   }
 
   // Update last sync time
-  var now = new Date();
-  localStorage.setItem('lpr_fc_last_sync', now.toISOString());
+  var syncNow = syncTime || new Date();
+  localStorage.setItem('lpr_fc_last_sync', syncNow.toISOString());
   var lastSyncEl = document.getElementById('fc-last-sync');
-  if(lastSyncEl) lastSyncEl.textContent = (lang==='en'?'Last sync: ':'Última sincronización: ') + now.toLocaleTimeString();
+  if(lastSyncEl) lastSyncEl.textContent = (lang==='en'?'Last sync: ':'Última sincronización: ') + syncNow.toLocaleTimeString();
 
   // Show offline alert
   var offlineAlert = document.getElementById('fc-offline-alert');
   if(offlineAlert) offlineAlert.style.display = 'flex';
 
   updateFcStatusUI('connected', lang==='en'?'Connected — sync complete':'Conectado — sincronización completa');
-  logSync('Sync complete: ' + totalCycles + ' cycles, $' + totalRevenue.toFixed(2) + ' revenue, ' + machineCount + ' active machines' + (errorCount > 0 ? ', ' + errorCount + ' errors' : ''));
+  logSync('Sync complete: ' + totalCycles + ' cycles logged, $' + totalRevenue.toFixed(2) + ' revenue, ' + machineCount + ' active machines today.');
 
   if(btn) btn.disabled = false;
   showToast(lang==='en'?'FasCard sync complete! '+totalCycles+' cycles loaded.':'¡Sincronización completa! '+totalCycles+' ciclos cargados.');
@@ -2108,116 +2156,123 @@ function fasCardHistoricalImport() {
     showToast(lang==='en'?'Please select a start date.':'Por favor seleccione una fecha de inicio.');
     return;
   }
-  var btn = document.getElementById('hist-import-btn');
+  var btn    = document.getElementById('hist-import-btn');
   var status = document.getElementById('hist-import-status');
-  var log = document.getElementById('hist-import-log');
+  var log    = document.getElementById('hist-import-log');
   if(btn) btn.disabled = true;
   if(log) { log.style.display='block'; log.innerHTML=''; }
-  if(status) status.textContent = lang==='en'?'Starting historical import...':'Iniciando importación histórica...';
+  if(status) status.textContent = lang==='en'?'Connecting to FasCard...':'Conectando a FasCard...';
 
   function logHist(msg) {
     if(!log) return;
     var entry = document.createElement('div');
     entry.className = 'fc-sync-log-entry';
-    entry.textContent = '['+new Date().toLocaleTimeString()+'] ' + msg;
+    entry.textContent = '['+new Date().toLocaleTimeString()+'] '+msg;
     log.insertBefore(entry, log.firstChild);
   }
 
   withToken(function(err, token) {
     if(err) {
-      if(status) status.textContent = lang==='en'?'Not connected. Configure FasCard in Settings first.':'No conectado. Configure FasCard primero.';
+      if(status) status.textContent = lang==='en'?'Not connected. Configure FasCard first.':'No conectado.';
       if(btn) btn.disabled = false;
       return;
     }
 
-    var start = new Date(startDate + 'T00:00:00');
-    var end = new Date();
-    logHist('Importing from ' + start.toLocaleDateString() + ' to ' + end.toLocaleDateString());
+    var start = new Date(startDate+'T00:00:00');
+    var end   = new Date();
+    logHist('Importing from '+start.toLocaleDateString()+' to '+end.toLocaleDateString());
 
-    // Build list of date ranges — one per day to avoid hitting API limits
+    // Build day list
     var days = [];
     var cur = new Date(start);
     while(cur <= end) {
-      var dayStart = new Date(cur);
-      var dayEnd = new Date(cur);
-      dayEnd.setHours(23,59,59);
       days.push({
-        date: dayStart.toISOString().slice(0,10),
-        minDT: dayStart.toISOString().slice(0,19),
-        maxDT: dayEnd.toISOString().slice(0,19)
+        date:  cur.toISOString().slice(0,10),
+        minDT: new Date(cur.getFullYear(),cur.getMonth(),cur.getDate(),0,0,0).toISOString().slice(0,19),
+        maxDT: new Date(cur.getFullYear(),cur.getMonth(),cur.getDate(),23,59,59).toISOString().slice(0,19)
       });
       cur.setDate(cur.getDate()+1);
     }
 
-    logHist('Processing ' + days.length + ' days across 20 machines...');
-    if(status) status.textContent = (lang==='en'?'Importing ':'Importando ') + days.length + (lang==='en'?' days...':' días...');
+    logHist('Processing '+days.length+' days using SysStats + machine status...');
+    if(status) status.textContent = (lang==='en'?'Importing ':'Importando ')+days.length+(lang==='en'?' days...':' días...');
 
-    var machineIds = Object.keys(FC_MACHINE_MAP).map(Number).filter(function(id){ return !FC_MACHINE_MAP[id].offline; });
     var importedShifts = [];
-    var daysProcessed = 0;
+    var daysProcessed  = 0;
 
-    function processDay(dayIdx) {
-      if(dayIdx >= days.length) {
+    function processDay(idx) {
+      if(idx >= days.length) {
         finalizeImport(importedShifts, days.length, btn, status, logHist);
         return;
       }
-      var day = days[dayIdx];
-      var dayCycles = {}, dayRevenue = 0;
-      var pending = machineIds.length;
+      var day = days[idx];
 
-      machineIds.forEach(function(machId) {
-        var url = getFcBaseUrl() + '?action=machine_history&machId=' + machId
-          + '&minDT=' + encodeURIComponent(day.minDT)
-          + '&maxDT=' + encodeURIComponent(day.maxDT) + '&limit=500';
-        fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
-        .then(function(r){ return r.ok ? r.json() : []; })
-        .then(function(response) {
-          var payload = response.data !== undefined ? response.data : response;
-          var records = [];
-          if(Array.isArray(payload)) records = payload;
-          else if(payload && Array.isArray(payload.Items)) records = payload.Items;
-          else if(payload && Array.isArray(payload.Records)) records = payload.Records;
-          else if(payload && Array.isArray(payload.Data)) records = payload.Data;
-          var cycles = records.length;
-          var rev = 0;
-          records.forEach(function(rec){
-            rev += parseFloat(rec.CreditCard||rec.Credit||rec.Amount||rec.Spend||rec.Total||rec.Price||0);
+      // Get SysStats for this day
+      var statsUrl = getFcBaseUrl()+'?action=system_stats&types=Turns,Revenue'
+        +'&minDT='+encodeURIComponent(day.minDT)
+        +'&maxDT='+encodeURIComponent(day.maxDT);
+
+      fetch(statsUrl, { headers: { 'Authorization': 'Bearer '+token } })
+      .then(function(r) { return r.json(); })
+      .then(function(statsData) {
+        var stats = statsData.data || statsData;
+        var totalTurns = 0, dayRevenue = 0;
+
+        if(Array.isArray(stats)) {
+          stats.forEach(function(s) {
+            var type = String(s.Type||s.StatType||s.type||'').toLowerCase();
+            var val  = parseFloat(s.Value||s.Amount||s.Total||s.Count||0);
+            if(type.indexOf('turn')!==-1||type==='1') totalTurns  += val;
+            if(type.indexOf('rev') !==-1||type==='2') dayRevenue  += val;
           });
-          dayCycles[machId] = cycles;
-          dayRevenue += rev;
-          pending--;
-          if(pending === 0) {
-            // Build shift entry for this day if any activity
-            var totalDayCycles = Object.values(dayCycles).reduce(function(a,b){return a+b;},0);
-            if(totalDayCycles > 0 || dayRevenue > 0) {
-              var entry = { 's-date': day.date, 's-staff': 'FasCard Import', 's-shift': 'Full day',
-                's-rev-self': dayRevenue.toFixed(2), 's-rev-drop': '0', 's-drop-lbs': '0',
-                's-discount': '0', 's-soap': '0', 's-softener': '0', 's-bags': '0',
-                's-issues': '', 's-complaints': '', 's-notes': 'Imported from FasCard historical data',
-                offSys: [] };
-              // Map machine IDs to cycle keys
-              Object.keys(dayCycles).forEach(function(machId) {
-                var machine = FC_MACHINE_MAP[parseInt(machId)];
-                if(machine) entry[machine.cycleKey] = dayCycles[machId];
-              });
-              importedShifts.push(entry);
-            }
-            daysProcessed++;
-            if(daysProcessed % 5 === 0) logHist('Processed ' + daysProcessed + '/' + days.length + ' days...');
-            // Small delay to avoid rate limiting
-            setTimeout(function(){ processDay(dayIdx+1); }, 100);
-          }
-        })
-        .catch(function() {
-          pending--;
-          if(pending === 0) { setTimeout(function(){ processDay(dayIdx+1); }, 100); }
-        });
+        } else if(stats && typeof stats==='object') {
+          totalTurns  = parseFloat(stats.Turns  ||stats.turns  ||0);
+          dayRevenue  = parseFloat(stats.Revenue ||stats.revenue||0);
+        }
+
+        if(totalTurns > 0 || dayRevenue > 0) {
+          var entry = {
+            's-date':    day.date,
+            's-staff':   'FasCard Import',
+            's-shift':   'Full day',
+            's-rev-self': dayRevenue.toFixed(2),
+            's-rev-drop': '0',
+            's-drop-lbs': '0',
+            's-discount': '0',
+            's-soap':     '0',
+            's-softener': '0',
+            's-bags':     '0',
+            's-issues':   '',
+            's-complaints':'',
+            's-notes':    'Imported from FasCard — '+totalTurns+' turns, $'+dayRevenue.toFixed(2),
+            offSys:       []
+          };
+          // Distribute turns across active machines evenly as estimate
+          // Per-machine breakdown requires full API — pending FasCard support
+          var allMachNos = Object.keys(FC_MACHINE_MAP).map(Number).filter(function(id){
+            return !FC_MACHINE_MAP[id].offline;
+          });
+          var turnsEach = allMachNos.length > 0 ? Math.round(totalTurns / allMachNos.length) : 0;
+          allMachNos.forEach(function(machNo) {
+            var machine = FC_MACHINE_MAP[machNo];
+            if(machine) entry[machine.cycleKey] = turnsEach;
+          });
+          importedShifts.push(entry);
+        }
+        daysProcessed++;
+        if(daysProcessed % 5 === 0) logHist('Processed '+daysProcessed+'/'+days.length+' days...');
+        setTimeout(function(){ processDay(idx+1); }, 80);
+      })
+      .catch(function() {
+        daysProcessed++;
+        setTimeout(function(){ processDay(idx+1); }, 80);
       });
     }
 
     processDay(0);
   });
 }
+
 
 function finalizeImport(importedShifts, totalDays, btn, status, logHist) {
   if(importedShifts.length === 0) {
@@ -2263,71 +2318,23 @@ function runDiagnostic() {
   var btn = document.getElementById('diag-btn');
   var out = document.getElementById('diag-result');
   if(btn) btn.disabled = true;
-  if(out) { out.style.display='block'; out.textContent='Fetching machine list...'; }
+  if(out) { out.style.display='block'; out.textContent='Running diagnostic...'; }
 
   withToken(function(err, token) {
     if(err) {
-      if(out) out.textContent = 'ERROR: Not connected — ' + err;
+      if(out) out.textContent = 'ERROR: Not connected — '+err;
       if(btn) btn.disabled = false;
       return;
     }
-    var url = getFcBaseUrl() + '?action=machines_list&locId=4661';
-    fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
+    var url = getFcBaseUrl()+'?action=diagnose&locId=4661';
+    fetch(url, { headers: { 'Authorization': 'Bearer '+token } })
     .then(function(r) { return r.json(); })
-    .then(function(result) {
-      var lines = ['=== MACHINES LIST ==='];
-      lines.push(JSON.stringify(result, null, 2));
-
-      var machines = [];
-      if(result.data && Array.isArray(result.data)) machines = result.data;
-      else if(Array.isArray(result)) machines = result;
-
-      if(machines.length > 0) {
-        var firstId = machines[0].ID || machines[0].Id || machines[0].MachineID || machines[0].id || null;
-        lines.push('');
-        lines.push('=== First machine ID field: ' + firstId + ' ===');
-        if(out) out.textContent = lines.join('\n');
-
-        if(firstId) {
-          var histUrl = getFcBaseUrl() + '?action=machine_history&machId=' + firstId + '&limit=3';
-          fetch(histUrl, { headers: { 'Authorization': 'Bearer ' + token } })
-          .then(function(r2) { return r2.json(); })
-          .then(function(histData) {
-            lines.push('');
-            lines.push('=== HISTORY SAMPLE ===');
-            lines.push(JSON.stringify(histData, null, 2));
-            if(out) out.textContent = lines.join('\n');
-            if(btn) btn.disabled = false;
-          })
-          .catch(function(e2) {
-            lines.push('History error: ' + e2.message);
-            if(out) out.textContent = lines.join('\n');
-            if(btn) btn.disabled = false;
-          });
-        } else {
-          if(out) out.textContent = lines.join('\n');
-          if(btn) btn.disabled = false;
-        }
-      } else {
-        lines.push('No machines found — trying diagnose endpoint...');
-        if(out) out.textContent = lines.join('\n');
-        var diagUrl = getFcBaseUrl() + '?action=diagnose&locId=4661';
-        fetch(diagUrl, { headers: { 'Authorization': 'Bearer ' + token } })
-        .then(function(r3) { return r3.json(); })
-        .then(function(diagData) {
-          lines.push(JSON.stringify(diagData, null, 2));
-          if(out) out.textContent = lines.join('\n');
-          if(btn) btn.disabled = false;
-        })
-        .catch(function(e3) {
-          lines.push('Diagnose error: ' + e3.message);
-          if(out) out.textContent = lines.join('\n');
-          if(btn) btn.disabled = false;
-        });
-      }
+    .then(function(data) {
+      if(out) out.textContent = JSON.stringify(data, null, 2);
+      if(btn) btn.disabled = false;
     })
     .catch(function(e) {
-      if(out) out.textContent = 'Diagnostic error: ' + e.message;
+      if(out) out.textContent = 'Error: '+e.message;
       if(btn) btn.disabled = false;
     });
   });
