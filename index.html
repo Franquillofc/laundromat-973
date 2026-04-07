@@ -1616,28 +1616,29 @@ function updateDate() {
 
 
 // ── FASCARD MACHINE MAP ───────────────────────────────────────────────────
-// Confirmed from FasCard Setup → Machines screen (F2274 LAUNDROMAT 973)
+// MachNo -> { internalId (confirmed via diagnostic), label, type, cycleKey }
+// Internal IDs confirmed 2026-04-06 via /api/Machine?LocationID=4661
 var FC_MACHINE_MAP = {
-  1:  { label:'Encore W1',  type:'washer_encore',  cycleKey:'c-ew1'  },
-  2:  { label:'Encore W2',  type:'washer_encore',  cycleKey:'c-ew2'  },
-  3:  { label:'Encore W3',  type:'washer_encore',  cycleKey:'c-ew3'  },
-  4:  { label:'Encore W4',  type:'washer_encore',  cycleKey:'c-ew4'  },
-  5:  { label:'Encore W5',  type:'washer_encore',  cycleKey:'c-ew5'  },
-  6:  { label:'Encore W6',  type:'washer_encore',  cycleKey:'c-ew6'  },
-  7:  { label:'Encore W7',  type:'washer_encore',  cycleKey:'c-ew7'  },
-  8:  { label:'Encore W8',  type:'washer_encore',  cycleKey:'c-ew8'  },
-  9:  { label:'Encore W9',  type:'washer_encore',  cycleKey:'c-ew9'  },
-  10: { label:'Encore W10', type:'washer_encore',  cycleKey:'c-ew10' },
-  22: { label:'Dexter W1',  type:'washer_dexter',  cycleKey:'c-dw1'  },
-  23: { label:'Dexter W2',  type:'washer_dexter',  cycleKey:'c-dw2'  },
-  24: { label:'Dexter W3',  type:'washer_dexter',  cycleKey:'c-dw3'  },
-  25: { label:'Dexter W4',  type:'washer_dexter',  cycleKey:'c-dw4'  },
-  26: { label:'Dexter P1',  type:'dryer_dexter',   cycleKey:'c-dp1'  },
-  27: { label:'Dexter P2',  type:'dryer_dexter',   cycleKey:'c-dp2'  },
-  28: { label:'Dexter P3',  type:'dryer_dexter',   cycleKey:'c-dp3',  offline:true },
-  29: { label:'Dexter P4',  type:'dryer_dexter',   cycleKey:'c-dp4',  offline:true },
-  31: { label:'Encore D1',  type:'dryer_encore',   cycleKey:'c-ed1'  },
-  33: { label:'Encore D2',  type:'dryer_encore',   cycleKey:'c-ed2'  }
+  1:  { internalId:91029, label:'Encore W1',  type:'washer_encore', cycleKey:'c-ew1'  },
+  2:  { internalId:91030, label:'Encore W2',  type:'washer_encore', cycleKey:'c-ew2'  },
+  3:  { internalId:91031, label:'Encore W3',  type:'washer_encore', cycleKey:'c-ew3'  },
+  4:  { internalId:91032, label:'Encore W4',  type:'washer_encore', cycleKey:'c-ew4'  },
+  5:  { internalId:91033, label:'Encore W5',  type:'washer_encore', cycleKey:'c-ew5'  },
+  6:  { internalId:91034, label:'Encore W6',  type:'washer_encore', cycleKey:'c-ew6'  },
+  7:  { internalId:91035, label:'Encore W7',  type:'washer_encore', cycleKey:'c-ew7'  },
+  8:  { internalId:91036, label:'Encore W8',  type:'washer_encore', cycleKey:'c-ew8'  },
+  9:  { internalId:91039, label:'Encore W9',  type:'washer_encore', cycleKey:'c-ew9'  },
+  10: { internalId:91038, label:'Encore W10', type:'washer_encore', cycleKey:'c-ew10' },
+  22: { internalId:91580, label:'Dexter W1',  type:'washer_dexter', cycleKey:'c-dw1'  },
+  23: { internalId:91581, label:'Dexter W2',  type:'washer_dexter', cycleKey:'c-dw2'  },
+  24: { internalId:91582, label:'Dexter W3',  type:'washer_dexter', cycleKey:'c-dw3'  },
+  25: { internalId:91583, label:'Dexter W4',  type:'washer_dexter', cycleKey:'c-dw4'  },
+  26: { internalId:91584, label:'Dexter P1',  type:'dryer_dexter',  cycleKey:'c-dp1'  },
+  27: { internalId:91585, label:'Dexter P2',  type:'dryer_dexter',  cycleKey:'c-dp2'  },
+  28: { internalId:91586, label:'Dexter P3',  type:'dryer_dexter',  cycleKey:'c-dp3', offline:true },
+  29: { internalId:91587, label:'Dexter P4',  type:'dryer_dexter',  cycleKey:'c-dp4', offline:true },
+  31: { internalId:91780, label:'Encore D1',  type:'dryer_encore',  cycleKey:'c-ed1'  },
+  33: { internalId:91781, label:'Encore D2',  type:'dryer_encore',  cycleKey:'c-ed2'  }
 };
 
 var FC_OFFLINE_IDS = [28, 29];
@@ -1808,49 +1809,31 @@ function fasCardSync() {
         if(pending === 0) processSyncResults(results, token, minDT, maxDT, btn);
         return;
       }
-      var url = getFcBaseUrl() + '?action=machine_history&machId=' + machId + '&minDT=' + encodeURIComponent(minDT) + '&maxDT=' + encodeURIComponent(maxDT) + '&limit=200';
+      var url = getFcBaseUrl() + '?action=machine_history&machId=' + machId
+        + '&minDT=' + encodeURIComponent(minDT) + '&maxDT=' + encodeURIComponent(maxDT) + '&limit=500';
       fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
       .then(function(r) {
         if(!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
-      .then(function(data) {
-        // Handle all FasCard response formats
+      .then(function(response) {
+        // New response format: { data: [...], raw: '...', status: N, endpoint: '...' }
         var records = [];
-        if(Array.isArray(data)) records = data;
-        else if(data && Array.isArray(data.Items)) records = data.Items;
-        else if(data && Array.isArray(data.Records)) records = data.Records;
-        else if(data && Array.isArray(data.Data)) records = data.Data;
-        else if(data && typeof data === 'object') {
-          // Some endpoints return a single object — wrap it
-          var keys = Object.keys(data);
-          if(keys.length > 0) records = [data];
-        }
+        var payload = response.data !== undefined ? response.data : response;
+        if(Array.isArray(payload)) records = payload;
+        else if(payload && Array.isArray(payload.Items)) records = payload.Items;
+        else if(payload && Array.isArray(payload.Records)) records = payload.Records;
+        else if(payload && Array.isArray(payload.Data)) records = payload.Data;
+
         var cycles = 0, revenue = 0;
         records.forEach(function(rec) {
           if(!rec) return;
-          // FasCard transaction types: 1=Vend/Start, 2=Refund, 3=Adjustment
-          var ttype = String(rec.TransType || rec.TransactionType || rec.Type || rec.type || '').toLowerCase();
-          var isStart = ttype === '1' || ttype === 'vend' || ttype === 'start'
-            || ttype.indexOf('start') !== -1 || ttype.indexOf('vend') !== -1;
-          if(isStart || ttype === '') {
-            // Count as cycle if it looks like a vend transaction
-            var amt = parseFloat(rec.CreditCard || rec.Credit || rec.CardAmount
-              || rec.Amount || rec.Spend || rec.Total || rec.sale || 0);
-            if(amt > 0 || isStart) {
-              cycles++;
-              revenue += amt;
-            }
-          }
+          var amt = parseFloat(rec.CreditCard || rec.Credit || rec.CardAmount
+            || rec.Amount || rec.Spend || rec.Total || rec.Price || 0);
+          // Each record = one transaction = one cycle
+          cycles++;
+          revenue += amt;
         });
-        // If we got records but parsed 0 cycles, count all records as cycles
-        // (FasCard history endpoint returns one record per transaction)
-        if(records.length > 0 && cycles === 0) {
-          cycles = records.length;
-          records.forEach(function(rec) {
-            revenue += parseFloat(rec.CreditCard || rec.Credit || rec.Amount || rec.Spend || rec.Total || 0);
-          });
-        }
         results[machId] = { cycles: cycles, revenue: revenue, offline: false };
         pending--;
         if(pending === 0) processSyncResults(results, token, minDT, maxDT, btn);
@@ -2185,18 +2168,21 @@ function fasCardHistoricalImport() {
       machineIds.forEach(function(machId) {
         var url = getFcBaseUrl() + '?action=machine_history&machId=' + machId
           + '&minDT=' + encodeURIComponent(day.minDT)
-          + '&maxDT=' + encodeURIComponent(day.maxDT) + '&limit=200';
+          + '&maxDT=' + encodeURIComponent(day.maxDT) + '&limit=500';
         fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
         .then(function(r){ return r.ok ? r.json() : []; })
-        .then(function(data) {
-          var records = Array.isArray(data) ? data : (data.Items||data.Records||data.Data||[]);
-          if(records.length === 0 && data && typeof data === 'object' && !Array.isArray(data)) {
-            var vals = Object.values(data);
-            if(vals.length > 0) records = vals;
-          }
-          var cycles = records.length > 0 ? records.length : 0;
+        .then(function(response) {
+          var payload = response.data !== undefined ? response.data : response;
+          var records = [];
+          if(Array.isArray(payload)) records = payload;
+          else if(payload && Array.isArray(payload.Items)) records = payload.Items;
+          else if(payload && Array.isArray(payload.Records)) records = payload.Records;
+          else if(payload && Array.isArray(payload.Data)) records = payload.Data;
+          var cycles = records.length;
           var rev = 0;
-          records.forEach(function(rec){ rev += parseFloat(rec.CreditCard||rec.Credit||rec.Amount||rec.Spend||rec.Total||0); });
+          records.forEach(function(rec){
+            rev += parseFloat(rec.CreditCard||rec.Credit||rec.Amount||rec.Spend||rec.Total||rec.Price||0);
+          });
           dayCycles[machId] = cycles;
           dayRevenue += rev;
           pending--;
